@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 #os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 import argparse
 import numpy as np
@@ -94,6 +95,7 @@ if __name__ == "__main__":
 
     # PROCESSING THE IMAGES
 
+    Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
     cropname = os.path.join(args.output_path, basename + '_input.jpg')
     savename = os.path.join(args.output_path, basename + '_vtoonify_' +  args.backbone[0] + '.jpg')
 
