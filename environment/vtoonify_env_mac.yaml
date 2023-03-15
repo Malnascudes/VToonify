@@ -1,0 +1,35 @@
+name: vtoonify_env
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - _libgcc_mutex
+  - ca-certificates
+  - certifi
+  - faiss
+  - libedit
+  - libfaiss
+  - libfaiss-avx2
+  - libffi
+  - matplotlib-base
+  - mkl < 2022
+  - pillow
+  - pip
+  - python
+  - python-lmdb
+  - pytorch
+  - setuptools
+  - scikit-image
+  - torchaudio
+  - torchvision
+  - pip:
+    - cmake
+    - dlib
+    - matplotlib
+    - ninja
+    - numpy
+    - opencv-python
+    - scipy
+    - tqdm
+    - wget
