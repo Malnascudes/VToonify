@@ -112,7 +112,7 @@ if __name__ == "__main__":
                 frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
             if scale <= 0.375:
                 frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
-                frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
+            frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
                 
     with torch.no_grad():
         I = align_face(frame, landmarkpredictor)
@@ -128,12 +128,11 @@ if __name__ == "__main__":
         x = transform(frame).unsqueeze(dim=0).to(device)
         # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
         # followed by downsampling the parsing maps
-        x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], 
-                            scale_factor=0.5, recompute_scale_factor=False).detach()
+        x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], scale_factor=0.5, recompute_scale_factor=False).detach()
         # we give parsing maps lower weight (1/16)
         inputs = torch.cat((x, x_p/16.), dim=1)
         # d_s has no effect when backbone is toonify
-        y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)        
+        y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)
         y_tilde = torch.clamp(y_tilde, -1, 1)
         
     cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
