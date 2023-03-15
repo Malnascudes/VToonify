@@ -19,7 +19,7 @@ class TestOptions():
     def __init__(self):
 
         self.parser = argparse.ArgumentParser(description="Style Transfer")
-        self.parser.add_argument("--content", type=str, default='./data/077436.jpg', help="path of the content image/video")
+        self.parser.add_argument("--content", type=str, default='./data', help="path of the folder with the content image/video")
         self.parser.add_argument("--style_id", type=int, default=26, help="the id of the style image")
         self.parser.add_argument("--style_degree", type=float, default=0.5, help="style degree for VToonify-D")
         self.parser.add_argument("--color_transfer", action="store_true", help="transfer the color of the style")
@@ -42,7 +42,31 @@ class TestOptions():
         for name, value in sorted(args.items()):
             print('%s: %s' % (str(name), str(value)))
         return self.opt
-    
+
+
+def pre_processingImage(args, filename, basename, landmarkpredictor):
+    cropname = os.path.join(args.output_path, basename + '_input.jpg')
+    savename = os.path.join(args.output_path, basename + '_vtoonify_' +  args.backbone[0] + '.jpg')
+
+    frame = cv2.imread(filename)
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+    # We detect the face in the image, and resize the image so that the eye distance is 64 pixels.
+    # Centered on the eyes, we crop the image to almost 400x400 (based on args.padding).
+    if args.scale_image:
+        paras = get_video_crop_parameter(frame, landmarkpredictor, args.padding)
+        if paras is not None:
+            h,w,top,bottom,left,right,scale = paras
+            H, W = int(bottom-top), int(right-left)
+            # for HR image, we apply gaussian blur to it to avoid over-sharp stylization results
+            if scale <= 0.75:
+                frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
+            if scale <= 0.375:
+                frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
+            frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
+
+    return cropname, savename, frame
+
 if __name__ == "__main__":
 
     # PROCESSING THE INPUT VALUES
@@ -85,59 +109,43 @@ if __name__ == "__main__":
             exstyle = vtoonify.zplus2wplus(exstyle)
            
     print('Load models successfully!')
+
+    files = Path(args.content).glob('*')
+    for file in files:
+        filename = args.content + "/" + file.name
+        basename = os.path.basename(filename).split('.')[0]
+        scale = 1
+        kernel_1d = np.array([[0.125],[0.375],[0.375],[0.125]])
+
+        Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
+        print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
+
+        # PROCESSING THE IMAGES
+
+        cropname, savename, frame = pre_processingImage(args, filename, basename, landmarkpredictor)
     
-    
-    filename = args.content
-    basename = os.path.basename(filename).split('.')[0]
-    scale = 1
-    kernel_1d = np.array([[0.125],[0.375],[0.375],[0.125]])
-    print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
-
-    # PROCESSING THE IMAGES
-
-    Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
-    cropname = os.path.join(args.output_path, basename + '_input.jpg')
-    savename = os.path.join(args.output_path, basename + '_vtoonify_' +  args.backbone[0] + '.jpg')
-
-    frame = cv2.imread(filename)
-    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-    # We detect the face in the image, and resize the image so that the eye distance is 64 pixels.
-    # Centered on the eyes, we crop the image to almost 400x400 (based on args.padding).
-    if args.scale_image:
-        paras = get_video_crop_parameter(frame, landmarkpredictor, args.padding)
-        if paras is not None:
-            h,w,top,bottom,left,right,scale = paras
-            H, W = int(bottom-top), int(right-left)
-            # for HR image, we apply gaussian blur to it to avoid over-sharp stylization results
-            if scale <= 0.75:
-                frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
-            if scale <= 0.375:
-                frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
-            frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
+        with torch.no_grad():
+            I = align_face(frame, landmarkpredictor)
+            I = transform(I).unsqueeze(dim=0).to(device)
+            s_w = pspencoder(I)
+            s_w = vtoonify.zplus2wplus(s_w)
+            if vtoonify.backbone == 'dualstylegan':
+                if args.color_transfer:
+                    s_w = exstyle
+                else:
+                    s_w[:,:7] = exstyle[:,:7]
                 
-    with torch.no_grad():
-        I = align_face(frame, landmarkpredictor)
-        I = transform(I).unsqueeze(dim=0).to(device)
-        s_w = pspencoder(I)
-        s_w = vtoonify.zplus2wplus(s_w)
-        if vtoonify.backbone == 'dualstylegan':
-            if args.color_transfer:
-                s_w = exstyle
-            else:
-                s_w[:,:7] = exstyle[:,:7]
-                
-        x = transform(frame).unsqueeze(dim=0).to(device)
-        # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
-        # followed by downsampling the parsing maps
-        x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], scale_factor=0.5, recompute_scale_factor=False).detach()
-        # we give parsing maps lower weight (1/16)
-        inputs = torch.cat((x, x_p/16.), dim=1)
-        # d_s has no effect when backbone is toonify
-        y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)
-        y_tilde = torch.clamp(y_tilde, -1, 1)
+            x = transform(frame).unsqueeze(dim=0).to(device)
+            # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
+            # followed by downsampling the parsing maps
+            x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], scale_factor=0.5, recompute_scale_factor=False).detach()
+            # we give parsing maps lower weight (1/16)
+            inputs = torch.cat((x, x_p/16.), dim=1)
+            # d_s has no effect when backbone is toonify
+            y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)
+            y_tilde = torch.clamp(y_tilde, -1, 1)
         
-    cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-    save_image(y_tilde[0].cpu(), savename)
+        cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        save_image(y_tilde[0].cpu(), savename)
         
-    print('Transfer style successfully!')
+        print('Transfer style successfully!')
