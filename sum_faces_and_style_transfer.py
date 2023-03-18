@@ -14,6 +14,7 @@ from model.bisenet.model import BiSeNet
 from model.encoder.align_all_parallel import align_face
 from util import save_image, load_image, visualize, load_psp_standalone, get_video_crop_parameter, tensor2cv2
 
+SLIDING_WINDOW_SIZE = 9
 
 class TestOptions():
     def __init__(self):
@@ -43,10 +44,15 @@ class TestOptions():
             print('%s: %s' % (str(name), str(value)))
         return self.opt
 
+def window_slide():
+    if len(embeddings_buffer) > SLIDING_WINDOW_SIZE:
+        embeddings_buffer.pop(0)
+
 
 def pre_processingImage(args, filename, basename, landmarkpredictor):
     cropname = os.path.join(args.output_path, basename + '_input.jpg')
     savename = os.path.join(args.output_path, basename + '_vtoonify_' +  args.backbone[0] + '.jpg')
+    sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM' +  args.backbone[0] + '.jpg')
 
     frame = cv2.imread(filename)
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -65,7 +71,53 @@ def pre_processingImage(args, filename, basename, landmarkpredictor):
                 frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
             frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
 
-    return cropname, savename, frame
+    return cropname, savename, sum_savename, frame
+
+def encoding(I):
+    s_w = pspencoder(I)
+    # if previous_embedding is not None:
+    #     vector_encoded = (vector_encoded + previous_embedding)/2  # SUM OPERATION? HERE?
+    s_w = vtoonify.zplus2wplus(s_w)
+    if vtoonify.backbone == 'dualstylegan':
+        if args.color_transfer:
+            s_w = exstyle
+        else:
+            s_w[:,:7] = exstyle[:,:7]
+
+    return s_w
+
+def styling(device, frame, s_w):
+    x = transform(frame).unsqueeze(dim=0).to(device)
+    # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
+    # followed by downsampling the parsing maps
+    x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], scale_factor=0.5, recompute_scale_factor=False).detach()
+    # we give parsing maps lower weight (1/16)
+    inputs = torch.cat((x, x_p/16.), dim=1)
+    # d_s has no effect when backbone is toonify
+    y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)
+    y_tilde = torch.clamp(y_tilde, -1, 1)
+
+    return y_tilde
+
+def processingImage(device, frame, landmarkpredictor):
+    with torch.no_grad():
+            I = align_face(frame, landmarkpredictor)
+            I = transform(I).unsqueeze(dim=0).to(device)
+
+            s_w = encoding(I)
+            y_tilde = styling(device, frame, s_w)
+
+            embeddings_buffer.append(s_w)
+
+            window_slide()
+
+            if len(embeddings_buffer) > 1:
+                add_embedding = torch.stack(embeddings_buffer)
+                sum_embedding = torch.mean(add_embedding, 0)
+                y_tilde_sum = styling(device, frame, sum_embedding)
+                return y_tilde, y_tilde_sum
+
+            return y_tilde, None
 
 if __name__ == "__main__":
 
@@ -74,8 +126,9 @@ if __name__ == "__main__":
     args = parser.parse()
     print('*'*98)
     
-    
     device = "cpu" if args.cpu else "cuda"
+    # # Force the code to be runned in my M2  chip all the time
+    # device = "cpu"
     
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -107,7 +160,9 @@ if __name__ == "__main__":
         exstyle = torch.tensor(exstyles[stylename]).to(device)
         with torch.no_grad():  
             exstyle = vtoonify.zplus2wplus(exstyle)
-           
+
+    embeddings_buffer = []
+
     print('Load models successfully!')
 
     files = Path(args.content).glob('*')
@@ -122,30 +177,15 @@ if __name__ == "__main__":
 
         # PROCESSING THE IMAGES
 
-        cropname, savename, frame = pre_processingImage(args, filename, basename, landmarkpredictor)
+        cropname, savename, sum_savename, frame = pre_processingImage(args, filename, basename, landmarkpredictor)
     
-        with torch.no_grad():
-            I = align_face(frame, landmarkpredictor)
-            I = transform(I).unsqueeze(dim=0).to(device)
-            s_w = pspencoder(I)
-            s_w = vtoonify.zplus2wplus(s_w)
-            if vtoonify.backbone == 'dualstylegan':
-                if args.color_transfer:
-                    s_w = exstyle
-                else:
-                    s_w[:,:7] = exstyle[:,:7]
-                
-            x = transform(frame).unsqueeze(dim=0).to(device)
-            # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
-            # followed by downsampling the parsing maps
-            x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], scale_factor=0.5, recompute_scale_factor=False).detach()
-            # we give parsing maps lower weight (1/16)
-            inputs = torch.cat((x, x_p/16.), dim=1)
-            # d_s has no effect when backbone is toonify
-            y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)
-            y_tilde = torch.clamp(y_tilde, -1, 1)
+        y_tilde, y_tilde_sum = processingImage(device, frame, landmarkpredictor)
         
         cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         save_image(y_tilde[0].cpu(), savename)
+
+        if y_tilde_sum is not None:
+            # cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            save_image(y_tilde_sum[0].cpu(), sum_savename)
         
         print('Transfer style successfully!')
