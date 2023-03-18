@@ -73,51 +73,29 @@ def pre_processingImage(args, filename, basename, landmarkpredictor):
 
     return cropname, savename, sum_savename, frame
 
-def encoding(I):
-    s_w = pspencoder(I)
-    # if previous_embedding is not None:
-    #     vector_encoded = (vector_encoded + previous_embedding)/2  # SUM OPERATION? HERE?
-    s_w = vtoonify.zplus2wplus(s_w)
-    if vtoonify.backbone == 'dualstylegan':
-        if args.color_transfer:
-            s_w = exstyle
-        else:
-            s_w[:,:7] = exstyle[:,:7]
-
-    return s_w
-
-def styling(device, frame, s_w):
-    x = transform(frame).unsqueeze(dim=0).to(device)
-    # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
-    # followed by downsampling the parsing maps
-    x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], scale_factor=0.5, recompute_scale_factor=False).detach()
-    # we give parsing maps lower weight (1/16)
-    inputs = torch.cat((x, x_p/16.), dim=1)
-    # d_s has no effect when backbone is toonify
-    y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)
-    y_tilde = torch.clamp(y_tilde, -1, 1)
-
-    return y_tilde
-
-def processingImage(device, frame, landmarkpredictor):
+def processingStyle(device, frame, landmarkpredictor):
     with torch.no_grad():
             I = align_face(frame, landmarkpredictor)
             I = transform(I).unsqueeze(dim=0).to(device)
 
-            s_w = encoding(I)
-            y_tilde = styling(device, frame, s_w)
+            s_w = pspencoder(I)
+            # if previous_embedding is not None:
+            #     vector_encoded = (vector_encoded + previous_embedding)/2  # SUM OPERATION? HERE?
+            s_w = vtoonify.zplus2wplus(s_w)
+            if vtoonify.backbone == 'dualstylegan':
+                if args.color_transfer:
+                    s_w = exstyle
+                else:
+                    s_w[:,:7] = exstyle[:,:7]
 
-            embeddings_buffer.append(s_w)
+            x = transform(frame).unsqueeze(dim=0).to(device)
+            # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
+            # followed by downsampling the parsing maps
+            x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], scale_factor=0.5, recompute_scale_factor=False).detach()
+            # we give parsing maps lower weight (1/16)
+            inputs = torch.cat((x, x_p/16.), dim=1)
 
-            window_slide()
-
-            if len(embeddings_buffer) > 1:
-                add_embedding = torch.stack(embeddings_buffer)
-                sum_embedding = torch.mean(add_embedding, 0)
-                y_tilde_sum = styling(device, frame, sum_embedding)
-                return y_tilde, y_tilde_sum
-
-            return y_tilde, None
+            return s_w, inputs
 
 if __name__ == "__main__":
 
@@ -179,13 +157,27 @@ if __name__ == "__main__":
 
         cropname, savename, sum_savename, frame = pre_processingImage(args, filename, basename, landmarkpredictor)
     
-        y_tilde, y_tilde_sum = processingImage(device, frame, landmarkpredictor)
+        s_w, inputs = processingStyle(device, frame, landmarkpredictor)
+
+        # embeddings_buffer.append(s_w)
+
+        # window_slide()
+
+        # if len(embeddings_buffer) > 1:
+        #     add_embedding = torch.stack(embeddings_buffer)
+        #     sum_embedding = torch.mean(add_embedding, 0)
+        #     y_tilde_sum = styling(device, frame, sum_embedding)
+
+
+        # d_s has no effect when backbone is toonify
+        y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)
+        y_tilde = torch.clamp(y_tilde, -1, 1)
         
         cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         save_image(y_tilde[0].cpu(), savename)
 
-        if y_tilde_sum is not None:
-            # cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-            save_image(y_tilde_sum[0].cpu(), sum_savename)
+        # if y_tilde_sum is not None:
+        #     # cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        #     save_image(y_tilde_sum[0].cpu(), sum_savename)
         
         print('Transfer style successfully!')
