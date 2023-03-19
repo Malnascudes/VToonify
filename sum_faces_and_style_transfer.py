@@ -3,6 +3,7 @@ from pathlib import Path
 #os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 import argparse
 import numpy as np
+import math
 import cv2
 import dlib
 import torch
@@ -10,6 +11,7 @@ from torchvision import transforms
 import torch.nn.functional as F
 from tqdm import tqdm
 from model.vtoonify import VToonify
+from model.vtoonify_sum import VToonifySum
 from model.bisenet.model import BiSeNet
 from model.encoder.align_all_parallel import align_face
 from util import save_image, load_image, visualize, load_psp_standalone, get_video_crop_parameter, tensor2cv2
@@ -52,7 +54,7 @@ def window_slide():
 def pre_processingImage(args, filename, basename, landmarkpredictor):
     cropname = os.path.join(args.output_path, basename + '_input.jpg')
     savename = os.path.join(args.output_path, basename + '_vtoonify_' +  args.backbone[0] + '.jpg')
-    sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM' +  args.backbone[0] + '.jpg')
+    sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM_' +  args.backbone[0] + '.jpg')
 
     frame = cv2.imread(filename)
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -97,6 +99,26 @@ def processingStyle(device, frame, landmarkpredictor):
 
             return s_w, inputs
 
+def concatenateTensors():
+    max_dim = embeddings_buffer[-1].size()[2]
+    result = []
+    for t in embeddings_buffer:
+        d = max_dim - t.size()[2]
+        if d < 0:
+            print("SHIT")
+        elif (d % 2) == 0:
+            result.append(F.pad(input=t, pad=(int(d/2), int(d/2), int(d/2), int(d/2), 0, 0, 0, 0), mode='constant', value=0))
+        else:
+            result.append(F.pad(input=t, pad=(math.ceil(d/2), math.floor(d/2), math.ceil(d/2), math.floor(d/2), 0, 0, 0, 0), mode='constant', value=0))
+        
+    add_embedding = torch.stack(result)
+    return add_embedding
+
+def lookForSum():
+    add_embedding = concatenateTensors()
+    sum_embedding = torch.mean(add_embedding, 0)
+    return sum_embedding
+
 if __name__ == "__main__":
 
     # PROCESSING THE INPUT VALUES
@@ -113,7 +135,7 @@ if __name__ == "__main__":
         transforms.Normalize(mean=[0.5, 0.5, 0.5],std=[0.5,0.5,0.5]),
         ])
     
-    vtoonify = VToonify(backbone = args.backbone)
+    vtoonify = VToonifySum(backbone = args.backbone)
     vtoonify.load_state_dict(torch.load(args.ckpt, map_location=lambda storage, loc: storage)['g_ema'])
     vtoonify.to(device)
 
@@ -159,25 +181,24 @@ if __name__ == "__main__":
     
         s_w, inputs = processingStyle(device, frame, landmarkpredictor)
 
-        # embeddings_buffer.append(s_w)
+        out, skip, encoder_features, adastyles = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, return_feat=True)
+        embeddings_buffer.append(out)
 
-        # window_slide()
-
-        # if len(embeddings_buffer) > 1:
-        #     add_embedding = torch.stack(embeddings_buffer)
-        #     sum_embedding = torch.mean(add_embedding, 0)
-        #     y_tilde_sum = styling(device, frame, sum_embedding)
-
+        window_slide()
 
         # d_s has no effect when backbone is toonify
-        y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)
+        y_tilde = vtoonify((inputs, out,skip, encoder_features, adastyles), s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, just_decoder=True)
         y_tilde = torch.clamp(y_tilde, -1, 1)
-        
+
         cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         save_image(y_tilde[0].cpu(), savename)
 
-        # if y_tilde_sum is not None:
-        #     # cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-        #     save_image(y_tilde_sum[0].cpu(), sum_savename)
+        if len(embeddings_buffer) > 1:
+            sum_embedding = lookForSum()
+            y_tilde_sum = vtoonify((inputs, sum_embedding, skip, encoder_features, adastyles), s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, just_decoder=True)
+            y_tilde_sum = torch.clamp(y_tilde, -1, 1)
+
+            # cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            save_image(y_tilde_sum[0].cpu(), sum_savename)
         
         print('Transfer style successfully!')
