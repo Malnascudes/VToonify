@@ -35,7 +35,7 @@ class TestOptions():
         self.parser.add_argument("--cpu", action="store_true", help="if true, only use cpu")
         self.parser.add_argument("--backbone", type=str, default='dualstylegan', help="dualstylegan | toonify")
         self.parser.add_argument("--padding", type=int, nargs=4, default=[200,200,200,200], help="left, right, top, bottom paddings to the face center")
-        
+
     def parse(self):
         self.opt = self.parser.parse_args()
         if self.opt.exstyle_path is None:
@@ -100,17 +100,20 @@ def processingStyle(device, frame, landmarkpredictor):
             return s_w, inputs
 
 def concatenateTensors():
-    max_dim = embeddings_buffer[-1].size()[2]
+    current_size = embeddings_buffer[-1].size()
+    current_dim = current_size[2]
     result = []
     for t in embeddings_buffer:
-        d = max_dim - t.size()[2]
+        d = current_dim - t.size()[2]
         if d < 0:
-            print("SHIT")
-        elif (d % 2) == 0:
-            result.append(F.pad(input=t, pad=(int(d/2), int(d/2), int(d/2), int(d/2), 0, 0, 0, 0), mode='constant', value=0))
+            t = t.narrow(2,0,current_size[2])
+            t = t.narrow(3,0,current_size[3])
+            result.append(t)
+        # elif (d % 2) == 0:
+        #     result.append(F.pad(input=t, pad=(int(d/2), int(d/2), int(d/2), int(d/2), 0, 0, 0, 0), mode='constant', value=0))
         else:
-            result.append(F.pad(input=t, pad=(math.ceil(d/2), math.floor(d/2), math.ceil(d/2), math.floor(d/2), 0, 0, 0, 0), mode='constant', value=0))
-        
+            result.append(F.pad(input=t, pad=(math.ceil((current_size[3] - t.size()[3])/2), math.floor((current_size[3] - t.size()[3])/2), math.ceil((current_size[2] - t.size()[2])/2), math.floor((current_size[2] - t.size()[2])/2), 0, 0, 0, 0), mode='constant', value=0))
+
     add_embedding = torch.stack(result)
     return add_embedding
 
@@ -125,16 +128,16 @@ if __name__ == "__main__":
     parser = TestOptions()
     args = parser.parse()
     print('*'*98)
-    
+
     device = "cpu" if args.cpu else "cuda"
     # # Force the code to be runned in my M2  chip all the time
     # device = "cpu"
-    
+
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5],std=[0.5,0.5,0.5]),
         ])
-    
+
     vtoonify = VToonifySum(backbone = args.backbone)
     vtoonify.load_state_dict(torch.load(args.ckpt, map_location=lambda storage, loc: storage)['g_ema'])
     vtoonify.to(device)
@@ -149,16 +152,16 @@ if __name__ == "__main__":
         wget.download('http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2', modelname+'.bz2')
         zipfile = bz2.BZ2File(modelname+'.bz2')
         data = zipfile.read()
-        open(modelname, 'wb').write(data) 
+        open(modelname, 'wb').write(data)
     landmarkpredictor = dlib.shape_predictor(modelname)
 
-    pspencoder = load_psp_standalone(args.style_encoder_path, device)    
+    pspencoder = load_psp_standalone(args.style_encoder_path, device)
 
     if args.backbone == 'dualstylegan':
         exstyles = np.load(args.exstyle_path, allow_pickle='TRUE').item()
         stylename = list(exstyles.keys())[args.style_id]
         exstyle = torch.tensor(exstyles[stylename]).to(device)
-        with torch.no_grad():  
+        with torch.no_grad():
             exstyle = vtoonify.zplus2wplus(exstyle)
 
     embeddings_buffer = []
@@ -178,7 +181,7 @@ if __name__ == "__main__":
         # PROCESSING THE IMAGES
 
         cropname, savename, sum_savename, frame = pre_processingImage(args, filename, basename, landmarkpredictor)
-    
+
         s_w, inputs = processingStyle(device, frame, landmarkpredictor)
 
         out, skip, encoder_features, adastyles = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, return_feat=True)
@@ -200,5 +203,5 @@ if __name__ == "__main__":
 
             # cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
             save_image(y_tilde_sum[0].cpu(), sum_savename)
-        
+
         print('Transfer style successfully!')
