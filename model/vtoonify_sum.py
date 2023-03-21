@@ -6,7 +6,7 @@ from model.stylegan.model import ConvLayer, EqualLinear, Generator, ResBlock
 from model.dualstylegan import AdaptiveInstanceNorm, AdaResBlock, DualStyleGAN
 import torch.nn.functional as F
 
-# IC-GAN: stylegan discriminator    
+# IC-GAN: stylegan discriminator
 class ConditionalDiscriminator(nn.Module):
     def __init__(self, size, channel_multiplier=2, blur_kernel=[1, 3, 3, 1], use_condition=False, style_num=None):
         super().__init__()
@@ -41,7 +41,7 @@ class ConditionalDiscriminator(nn.Module):
         self.stddev_group = 4
         self.stddev_feat = 1
         self.use_condition = use_condition
-        
+
         if self.use_condition:
             self.condition_dim = 128
             # map style degree to 64-dimensional vector
@@ -56,13 +56,13 @@ class ConditionalDiscriminator(nn.Module):
             self.style_mapper = nn.Embedding(style_num, self.condition_dim-self.condition_dim//2)
         else:
             self.condition_dim = 1
-            
+
         self.final_conv = ConvLayer(in_channel + 1, channels[4], 3)
         self.final_linear = nn.Sequential(
             EqualLinear(channels[4] * 4 * 4, channels[4], activation="fused_lrelu"),
             EqualLinear(channels[4], self.condition_dim),
         )
-        
+
     def forward(self, input, degree_label=None, style_ind=None):
         out = self.convs(input)
 
@@ -78,16 +78,16 @@ class ConditionalDiscriminator(nn.Module):
 
         out = self.final_conv(out)
         out = out.view(batch, -1)
-        
+
         if self.use_condition:
             h = self.final_linear(out)
             condition = torch.cat((self.label_mapper(degree_label), self.style_mapper(style_ind)), dim=1)
             out = (h * condition).sum(dim=1, keepdim=True) * (1 / np.sqrt(self.condition_dim))
         else:
             out = self.final_linear(out)
-            
-        return out 
-    
+
+        return out
+
 
 class VToonifyResBlock(nn.Module):
     def __init__(self, fin):
@@ -96,12 +96,12 @@ class VToonifyResBlock(nn.Module):
         self.conv = nn.Conv2d(fin, fin, 3,  1, 1)
         self.conv2 = nn.Conv2d(fin, fin, 3,  1, 1)
         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
-        
+
     def forward(self, x):
         out = self.lrelu(self.conv(x))
-        out = self.lrelu(self.conv2(out))      
+        out = self.lrelu(self.conv2(out))
         out = (out + x) / math.sqrt(2)
-        return out    
+        return out
 
 class Fusion(nn.Module):
     def __init__(self, in_channels, skip_channels, out_channels):
@@ -126,7 +126,7 @@ class Fusion(nn.Module):
         m_E = (F.relu(self.conv2(self.norm(out, label)))).tanh()
         f_out = self.conv(torch.cat([f_G, f_E * m_E], dim=1))
         return f_out, m_E
-    
+
 class VToonifySum(nn.Module):
     def __init__(self,
                  in_size=256,
@@ -159,11 +159,11 @@ class VToonifySum(nn.Module):
         self.encoder = nn.ModuleList()
         self.encoder.append(
             nn.Sequential(
-                nn.Conv2d(img_channels+19, 32, 3, 1, 1, bias=True), 
+                nn.Conv2d(img_channels+19, 32, 3, 1, 1, bias=True),
                 nn.LeakyReLU(negative_slope=0.2, inplace=True),
                 nn.Conv2d(32, channels[in_size], 3, 1, 1, bias=True),
                 nn.LeakyReLU(negative_slope=0.2, inplace=True)))
-        
+
         for res in encoder_res:
             in_channels = channels[res]
             if res > 32:
@@ -181,7 +181,7 @@ class VToonifySum(nn.Module):
                 self.encoder.append(nn.Sequential(*layers))
                 block = nn.Conv2d(in_channels, img_channels, 1, 1, 0, bias=True)
                 self.encoder.append(block)
-        
+
         # trainable fusion module
         self.fusion_out = nn.ModuleList()
         self.fusion_skip = nn.ModuleList()
@@ -196,7 +196,7 @@ class VToonifySum(nn.Module):
 
             self.fusion_skip.append(
                 nn.Conv2d(num_channels + 3, 3, 3, 1, 1, bias=True))
-        
+
         # Modified ModRes blocks in DualStyleGAN, with weights being fixed
         if self.backbone == 'dualstylegan':
             self.res = nn.ModuleList()
@@ -206,7 +206,7 @@ class VToonifySum(nn.Module):
                 self.res.append(AdaResBlock(out_channel, dilation=2**(5-i)))
                 self.res.append(AdaResBlock(out_channel, dilation=2**(5-i)))
 
-    
+
     def forward(self, x, style, d_s=None, return_mask=False, return_feat=False, just_decoder=False):
         if not just_decoder:
             # map style to W+ space
@@ -249,8 +249,8 @@ class VToonifySum(nn.Module):
         _index = 1
         m_Es = []
         for conv1, conv2, to_rgb in zip(
-            self.stylegan().convs[6::2], self.stylegan().convs[7::2], self.stylegan().to_rgbs[3:]): 
-            
+            self.stylegan().convs[6::2], self.stylegan().convs[7::2], self.stylegan().to_rgbs[3:]):
+
             # pass the mid-layer features of E to the corresponding resolution layers of G
             if 2 ** (5+((_index-1)//2)) <= self.in_size:
                 fusion_index = (_index - 1) // 2
@@ -262,12 +262,12 @@ class VToonifySum(nn.Module):
                     m_Es += [m_E]
                 else:
                     out = self.fusion_out[fusion_index](torch.cat([out, f_E], dim=1))
-                    skip = self.fusion_skip[fusion_index](torch.cat([skip, f_E], dim=1))  
-            
+                    skip = self.fusion_skip[fusion_index](torch.cat([skip, f_E], dim=1))
+
             # remove the noise input
             batch, _, height, width = out.shape
             noise = x.new_empty(batch, 1, height * 2, width * 2).normal_().detach() * 0.0
-            
+
             out = conv1(out, adastyles[:, _index+6], noise=noise)
             out = conv2(out, adastyles[:, _index+7], noise=noise)
             skip = to_rgb(out, adastyles[:, _index+8], skip)
@@ -277,12 +277,12 @@ class VToonifySum(nn.Module):
         if return_mask and self.backbone == 'dualstylegan':
             return image, m_Es
         return image
-    
+
     def stylegan(self):
         if self.backbone == 'dualstylegan':
             return self.generator.generator
         else:
             return self.generator
-        
+
     def zplus2wplus(self, zplus):
         return self.stylegan().style(zplus.reshape(zplus.shape[0]*zplus.shape[1], zplus.shape[2])).reshape(zplus.shape)
