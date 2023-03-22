@@ -9,8 +9,8 @@ import dlib
 import torch
 from torchvision import transforms
 import torch.nn.functional as F
-from tqdm import tqdm
-from model.vtoonify import VToonify
+# from tqdm import tqdm
+# from model.vtoonify import VToonify
 from model.vtoonify_sum import VToonifySum
 from model.bisenet.model import BiSeNet
 from model.encoder.align_all_parallel import align_face
@@ -46,6 +46,7 @@ class TestOptions():
             print('%s: %s' % (str(name), str(value)))
         return self.opt
 
+
 def window_slide():
     if len(embeddings_buffer) > SLIDING_WINDOW_SIZE:
         embeddings_buffer.pop(0)
@@ -75,6 +76,7 @@ def pre_processingImage(args, filename, basename, landmarkpredictor):
 
     return cropname, savename, sum_savename, frame
 
+
 def processingStyle(device, frame, landmarkpredictor):
     with torch.no_grad():
             I = align_face(frame, landmarkpredictor)
@@ -99,6 +101,7 @@ def processingStyle(device, frame, landmarkpredictor):
 
             return s_w, inputs
 
+
 def concatenateTensors():
     current_size = embeddings_buffer[-1].size()
     current_dim = current_size[2]
@@ -112,15 +115,23 @@ def concatenateTensors():
         # elif (d % 2) == 0:
         #     result.append(F.pad(input=t, pad=(int(d/2), int(d/2), int(d/2), int(d/2), 0, 0, 0, 0), mode='constant', value=0))
         else:
-            result.append(F.pad(input=t, pad=(math.ceil((current_size[3] - t.size()[3])/2), math.floor((current_size[3] - t.size()[3])/2), math.ceil((current_size[2] - t.size()[2])/2), math.floor((current_size[2] - t.size()[2])/2), 0, 0, 0, 0), mode='constant', value=0))
+            result.append(F.pad(input=t,
+                                pad=(math.ceil((current_size[3] - t.size()[3])/2),
+                                     math.floor((current_size[3] - t.size()[3])/2),
+                                     math.ceil((current_size[2] - t.size()[2])/2),
+                                     math.floor((current_size[2] - t.size()[2])/2),
+                                     0, 0, 0, 0),
+                                mode='constant', value=0))
 
     add_embedding = torch.stack(result)
     return add_embedding
+
 
 def lookForSum():
     add_embedding = concatenateTensors()
     sum_embedding = torch.mean(add_embedding, 0)
     return sum_embedding
+
 
 if __name__ == "__main__":
 
@@ -184,7 +195,10 @@ if __name__ == "__main__":
 
         s_w, inputs = processingStyle(device, frame, landmarkpredictor)
 
-        out, skip, encoder_features, adastyles = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, return_feat=True)
+        out, skip, encoder_features, adastyles = vtoonify(inputs,
+                                                          s_w.repeat(inputs.size(0), 1, 1),
+                                                          d_s = args.style_degree,
+                                                          return_feat=True)
         embeddings_buffer.append(out)
 
         window_slide()
