@@ -78,28 +78,32 @@ def pre_processingImage(args, filename, basename, landmarkpredictor):
 
 
 def processingStyle(device, frame, landmarkpredictor):
-    with torch.no_grad():
-            I = align_face(frame, landmarkpredictor)
-            I = transform(I).unsqueeze(dim=0).to(device)
+    I = align_face(frame, landmarkpredictor)
+    I = transform(I).unsqueeze(dim=0).to(device)
 
-            s_w = pspencoder(I)
-            # if previous_embedding is not None:
-            #     vector_encoded = (vector_encoded + previous_embedding)/2  # SUM OPERATION? HERE?
-            s_w = vtoonify.zplus2wplus(s_w)
-            if vtoonify.backbone == 'dualstylegan':
-                if args.color_transfer:
-                    s_w = exstyle
-                else:
-                    s_w[:,:7] = exstyle[:,:7]
+    s_w = pspencoder(I)
+    s_w = vtoonify.zplus2wplus(s_w)
+    if vtoonify.backbone == 'dualstylegan':
+        if args.color_transfer:
+            s_w = exstyle
+        else:
+            s_w[:, :7] = exstyle[:, :7]
 
-            x = transform(frame).unsqueeze(dim=0).to(device)
-            # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
-            # followed by downsampling the parsing maps
-            x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], scale_factor=0.5, recompute_scale_factor=False).detach()
-            # we give parsing maps lower weight (1/16)
-            inputs = torch.cat((x, x_p/16.), dim=1)
-
-            return s_w, inputs
+    x = transform(frame).unsqueeze(dim=0).to(device)
+    # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
+    # followed by downsampling the parsing maps
+    x_p = F.interpolate(
+        parsingpredictor(2*(F.interpolate(
+            x,
+            scale_factor=2,
+            mode='bilinear',
+            align_corners=False)))[0],
+        scale_factor=0.5,
+        recompute_scale_factor=False).detach()
+    # we give parsing maps lower weight (1/16)
+    inputs = torch.cat((x, x_p/16.), dim=1)
+    
+    return s_w, inputs
 
 
 def concatenateTensors():
@@ -181,41 +185,42 @@ if __name__ == "__main__":
 
     files = Path(args.content).glob('*')
     for file in files:
-        filename = args.content + "/" + file.name
-        basename = os.path.basename(filename).split('.')[0]
-        scale = 1
-        kernel_1d = np.array([[0.125],[0.375],[0.375],[0.125]])
+        with torch.no_grad():
+            filename = args.content + "/" + file.name
+            basename = os.path.basename(filename).split('.')[0]
+            scale = 1
+            kernel_1d = np.array([[0.125],[0.375],[0.375],[0.125]])
 
-        Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
-        print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
+            Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
+            print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
 
-        # PROCESSING THE IMAGES
+            # PROCESSING THE IMAGES
 
-        cropname, savename, sum_savename, frame = pre_processingImage(args, filename, basename, landmarkpredictor)
+            cropname, savename, sum_savename, frame = pre_processingImage(args, filename, basename, landmarkpredictor)
 
-        s_w, inputs = processingStyle(device, frame, landmarkpredictor)
+            s_w, inputs = processingStyle(device, frame, landmarkpredictor)
 
-        out, skip, encoder_features, adastyles = vtoonify(inputs,
-                                                          s_w.repeat(inputs.size(0), 1, 1),
-                                                          d_s = args.style_degree,
-                                                          return_feat=True)
-        embeddings_buffer.append(out)
+            out, skip, encoder_features, adastyles = vtoonify(inputs,
+                                                              s_w.repeat(inputs.size(0), 1, 1),
+                                                              d_s = args.style_degree,
+                                                              return_feat=True)
+            embeddings_buffer.append(out)
 
-        window_slide()
+            window_slide()
 
-        # d_s has no effect when backbone is toonify
-        y_tilde = vtoonify((inputs, out,skip, encoder_features, adastyles), s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, just_decoder=True)
-        y_tilde = torch.clamp(y_tilde, -1, 1)
+            # d_s has no effect when backbone is toonify
+            y_tilde = vtoonify((inputs, out,skip, encoder_features, adastyles), s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, just_decoder=True)
+            y_tilde = torch.clamp(y_tilde, -1, 1)
 
-        cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-        save_image(y_tilde[0].cpu(), savename)
+            cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            save_image(y_tilde[0].cpu(), savename)
 
-        if len(embeddings_buffer) > 1:
-            sum_embedding = lookForSum()
-            y_tilde_sum = vtoonify((inputs, sum_embedding, skip, encoder_features, adastyles), s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, just_decoder=True)
-            y_tilde_sum = torch.clamp(y_tilde, -1, 1)
+            if len(embeddings_buffer) > 1:
+                sum_embedding = lookForSum()
+                y_tilde_sum = vtoonify((inputs, sum_embedding, skip, encoder_features, adastyles), s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, just_decoder=True)
+                y_tilde_sum = torch.clamp(y_tilde, -1, 1)
 
-            # cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-            save_image(y_tilde_sum[0].cpu(), sum_savename)
+                # cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+                save_image(y_tilde_sum[0].cpu(), sum_savename)
 
         print('Transfer style successfully!')
