@@ -1,0 +1,1 @@
+python -m pdb sum_faces_and_style_transfer.py  --content ./data/matriudb/matriu-faces-white-bg  --scale_image  --style_id 77 --style_degree 0 --ckpt ./checkpoint/vtoonify_d_cartoon/vtoonify_s_d.pt --padding 600 600 600 600 --cpu --output_path ./output_test/sum/
