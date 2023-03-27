@@ -11,7 +11,7 @@ from tqdm import tqdm
 from model.vtoonify import VToonify
 from model.bisenet.model import BiSeNet
 from model.encoder.align_all_parallel import align_face
-from util import save_image, load_image, visualize, load_psp_standalone, get_video_crop_parameter, tensor2cv2
+from util import save_image, load_image, visualize, load_psp_standalone, get_video_crop_parameter, tensor2cv2, save_tensor
 from matplotlib import pyplot as plt
 
 class TestOptions():
@@ -237,6 +237,12 @@ if __name__ == "__main__":
             inputs = torch.cat((x, x_p/16.), dim=1)
             # d_s has no effect when backbone is toonify
             y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree)        
+
+            # Get features and save them
+            out, skip = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s = args.style_degree, return_feat=True)
+            save_tensor(out, f'{args.output_path}/out_feats.npy')
+            save_tensor(skip, f'{args.output_path}/skip.npy')
+
             y_tilde = torch.clamp(y_tilde, -1, 1)
 
         cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
