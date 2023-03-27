@@ -89,8 +89,7 @@ if __name__ == "__main__":
         x_p_hat = torch.tensor(np.load(args.parsing_map_path))          
             
     print('Load models successfully!')
-    
-    
+
     filename = args.content
     basename = os.path.basename(filename).split('.')[0]
     scale = 1
@@ -242,5 +241,5 @@ if __name__ == "__main__":
 
         cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         save_image(y_tilde[0].cpu(), savename)
-        
+
     print('Transfer style successfully!')
