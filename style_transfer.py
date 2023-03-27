@@ -12,7 +12,7 @@ from model.vtoonify import VToonify
 from model.bisenet.model import BiSeNet
 from model.encoder.align_all_parallel import align_face
 from util import save_image, load_image, visualize, load_psp_standalone, get_video_crop_parameter, tensor2cv2
-
+from matplotlib import pyplot as plt
 
 class TestOptions():
     def __init__(self):
@@ -220,6 +220,20 @@ if __name__ == "__main__":
             # followed by downsampling the parsing maps
             x_p = F.interpolate(parsingpredictor(2*(F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)))[0], 
                                 scale_factor=0.5, recompute_scale_factor=False).detach()
+
+            f, axarr = plt.subplots(4,5)
+            axarr = axarr.flatten()
+            x_p_out_folder = f'{args.output_path}/x_p'
+            if not os.path.exists(x_p_out_folder):
+                os.makedirs(x_p_out_folder)
+            for i, ax in zip(range(x_p.shape[1]), axarr):
+                ## Visualize x_p
+                image = tensor2cv2(x_p[:,i:i+1,:,:].squeeze(0))
+                ax.imshow(image)
+                save_image(x_p[:,i:i+1,:,:].squeeze(0), f'{x_p_out_folder}/{i}.png')
+            plt.show()
+            plt.savefig(f'{x_p_out_folder}/total.png')
+
             # we give parsing maps lower weight (1/16)
             inputs = torch.cat((x, x_p/16.), dim=1)
             # d_s has no effect when backbone is toonify
