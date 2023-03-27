@@ -8,8 +8,16 @@ python image_2_style.py --cpu \
 --ckpt './checkpoint/vtoonify_d_cartoon/vtoonify_s_d_c.pt'
 ```
 
+The script saves two style vectors:
+* no-zplus2wplus-<image-name>: straight result of pspencoder(). Saved at postion -1
+* <image-name>: after applying vtoonify.zplus2wplus(s_w). Saved at postion -2
 
-To use the saved encoding run
+Results are better using the `no-zplus2wplus-<image-name>` style, color transfer and eyes colors are changed.
+Test encoding with [this image](https://lumiere-a.akamaihd.net/v1/images/open-uri20150422-20810-1mtgk81_b7c97ea6.jpeg?region=0,0,450,450)
+
+
+To use the saved encoding run. Replace the `content` argument path for the desired image.
+Make sure that `exstyle_path`, `style_encoder_path` and `ckpt` are the same used in the `image_2_style.py` experiment.
 
 ```
 python style_transfer.py --scale_image --cpu \
