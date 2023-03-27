@@ -6,7 +6,7 @@ python image_2_style.py --cpu \
 --exstyle_path './checkpoint/vtoonify_d_cartoon/exstyle_code_custom.npy' \
 --style_encoder_path './checkpoint/encoder.pt' \
 --ckpt './checkpoint/vtoonify_d_cartoon/vtoonify_s_d_c.pt'
-``
+```
 
 
 To use the saved encoding run
