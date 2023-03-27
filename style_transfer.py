@@ -81,6 +81,7 @@ if __name__ == "__main__":
     if args.backbone == 'dualstylegan':
         exstyles = np.load(args.exstyle_path, allow_pickle='TRUE').item()
         stylename = list(exstyles.keys())[args.style_id]
+        print(f'Using style from: {stylename}')
         exstyle = torch.tensor(exstyles[stylename]).to(device)
         with torch.no_grad():  
             exstyle = vtoonify.zplus2wplus(exstyle)
