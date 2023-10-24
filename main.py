@@ -202,9 +202,6 @@ if __name__ == '__main__':
             # Resize frame to save memory
             frame = cv2.resize(frame, original_frame_size)
 
-            test_image_path = os.path.join(args.output_path, 'sum_face_test.jpg')
-            cv2.imwrite(test_image_path, frame)
-
             # Compute VToonify Features
             s_w, inputs = processingStyle(device, frame, s_w)
 
