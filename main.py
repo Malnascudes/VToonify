@@ -205,6 +205,7 @@ if __name__ == '__main__':
                 cv2.imwrite(sum_savename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
                 continue
 
+            print('Using VToonify to stylize image')
             # Resize frame to save memory
             frame = cv2.resize(frame, original_frame_size)
 
