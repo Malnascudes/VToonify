@@ -77,11 +77,9 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         properties = context.system_properties
         model_dir = properties.get("model_dir")
-        '''
         self.device = torch.device("cuda:" + str(properties.get("gpu_id")) if torch.cuda.is_available() else "cpu")
         
         # Read model serialize/pt file
-        '''
         # serialized_file = self.manifest['model']['serializedFile']
         # model_pt_path = os.path.join(model_dir, serialized_file)
 
