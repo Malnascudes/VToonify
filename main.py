@@ -36,7 +36,7 @@ class Arguments():
         self.parser.add_argument('--cpu', action='store_true', help='if true, only use cpu')
         self.parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
         self.parser.add_argument('--padding', type=int, nargs=4, default=[200, 200, 200, 200], help='left, right, top, bottom paddings to the face center')
-        self.parser.add_argument('--use_vtoonify', action='store_true', help='Use VToonify Styling')
+        self.parser.add_argument('--skip_vtoonify', action='store_true', help='Skip VToonify Styling and create final image only with generator model')
 
     def parse(self):
         self.opt = self.parser.parse_args()
@@ -201,7 +201,7 @@ if __name__ == '__main__':
             original_frame_size = frame.shape[:2]
             frame = decodeFeaturesToImg(s_w, vtoonify)
 
-            if not args.use_vtoonify:
+            if args.skip_vtoonify:
                 cv2.imwrite(sum_savename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
                 continue
 
