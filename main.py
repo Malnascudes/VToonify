@@ -121,34 +121,28 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.initialized = True
 
 
+    def pre_processingImage(self, frame, scale_image, padding):
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+        # We detect the face in the image, and resize the image so that the eye distance is 64 pixels.
+        # Centered on the eyes, we crop the image to almost 400x400 (based on args.padding).
+        if scale_image:
+            paras = get_video_crop_parameter(frame, self.landmarkpredictor, padding)
+            if paras is not None:
+                h, w, top, bottom, left, right, scale = paras
+                # for HR image, we apply gaussian blur to it to avoid over-sharp stylization results
+                if scale <= 0.75:
+                    frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
+                if scale <= 0.375:
+                    frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
+                frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
+
+        return frame
+
+
 def window_slide():
     if len(embeddings_buffer) > SLIDING_WINDOW_SIZE:
         embeddings_buffer.pop(0)
-
-
-def pre_processingImage(args, filename, basename, landmarkpredictor):
-    cropname = os.path.join(args.output_path, basename + '_input.jpg')
-    savename = os.path.join(args.output_path, basename + '_vtoonify_' + args.backbone[0] + '.jpg')
-    sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM_' + args.backbone[0] + '.jpg')
-
-    frame = cv2.imread(filename)
-    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-
-    # We detect the face in the image, and resize the image so that the eye distance is 64 pixels.
-    # Centered on the eyes, we crop the image to almost 400x400 (based on args.padding).
-    if args.scale_image:
-        paras = get_video_crop_parameter(frame, landmarkpredictor, args.padding)
-        if paras is not None:
-            h, w, top, bottom, left, right, scale = paras
-            # for HR image, we apply gaussian blur to it to avoid over-sharp stylization results
-            if scale <= 0.75:
-                frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
-            if scale <= 0.375:
-                frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
-            frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
-
-    return cropname, savename, sum_savename, frame
-
 
 def encode_face_img(device, frame, landmarkpredictor):
     I = align_face(frame, landmarkpredictor)
@@ -259,9 +253,17 @@ if __name__ == '__main__':
             filename = args.content + '/' + file.name
             basename = os.path.basename(filename).split('.')[0]
             print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
+            
+            # Save paths
+            cropname = os.path.join(args.output_path, basename + '_input.jpg')
+            savename = os.path.join(args.output_path, basename + '_vtoonify_' + args.backbone[0] + '.jpg')
+            sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM_' + args.backbone[0] + '.jpg')
+
+            # Load image
+            frame = cv2.imread(filename)
 
             # Preprocess Image
-            cropname, savename, sum_savename, frame = pre_processingImage(args, filename, basename, vtoonify_handler.landmarkpredictor)
+            frame = vtoonify_handler.pre_processingImage(frame, args.scale_image, args.padding)
 
             # Encode Image
             s_w = encode_face_img(device, frame, vtoonify_handler.landmarkpredictor)
