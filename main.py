@@ -146,6 +146,17 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         return s_w
 
+    @staticmethod
+    def applyExstyle(s_w, exstyle, latent_mask):
+        if exstyle is None:
+            print('No exstyle, skipping pSp styling')
+            return s_w
+
+        for i in latent_mask:
+            s_w[:, i] = exstyle[:, i]
+
+        return s_w
+
 
 def window_slide():
     if len(embeddings_buffer) > SLIDING_WINDOW_SIZE:
@@ -193,17 +204,6 @@ def decodeFeaturesToImg(s_w, vtoonify):
     frame = ((frame_tensor[0].detach().cpu().numpy().transpose(1, 2, 0) + 1.0) * 127.5).astype(np.uint8)
     # frame = frame_tensor.detach().cpu().numpy().astype(np.uint8)
     return frame
-
-
-def applyExstyle(s_w, exstyle, latent_mask):
-    if exstyle is None:
-        print('No exstyle, skipping pSp styling')
-        return s_w
-
-    for i in latent_mask:
-        s_w[:, i] = exstyle[:, i]
-
-    return s_w
 
 
 if __name__ == '__main__':
@@ -270,7 +270,7 @@ if __name__ == '__main__':
             # Stylize pSp image
             if args.psp_style:
                 print('Stylizing image with pSp')
-                s_w = applyExstyle(s_w, exstyle, latent_mask)
+                s_w = vtoonify_handler.applyExstyle(s_w, exstyle, latent_mask)
 
             embeddings_buffer.append(torch.squeeze(s_w))
             window_slide()
