@@ -36,6 +36,7 @@ class Arguments():
         self.parser.add_argument('--cpu', action='store_true', help='if true, only use cpu')
         self.parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
         self.parser.add_argument('--padding', type=int, nargs=4, default=[200, 200, 200, 200], help='left, right, top, bottom paddings to the face center')
+        self.parser.add_argument('--use_vtoonify', action='store_true', help='Use VToonify Styling')
 
     def parse(self):
         self.opt = self.parser.parse_args()
