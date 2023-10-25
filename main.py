@@ -182,29 +182,29 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         # frame = frame_tensor.detach().cpu().numpy().astype(np.uint8)
         return frame
 
-def processingStyle(device, frame, s_w):
-    s_w = vtoonify.zplus2wplus(s_w)
-    if vtoonify.backbone == 'dualstylegan':
-        if args.color_transfer:
-            s_w = exstyle
-        else:
-            s_w[:, :7] = exstyle[:, :7]
+    def processingStyle(self, frame, s_w):
+        s_w = vtoonify.zplus2wplus(s_w)
+        if vtoonify.backbone == 'dualstylegan':
+            if args.color_transfer:
+                s_w = exstyle
+            else:
+                s_w[:, :7] = exstyle[:, :7]
 
-    x = transform(frame).unsqueeze(dim=0).to(device)
-    # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
-    # followed by downsampling the parsing maps
-    x_p = F.interpolate(
-        parsingpredictor(2*(F.interpolate(
-            x,
-            scale_factor=2,
-            mode='bilinear',
-            align_corners=False)))[0],
-        scale_factor=0.5,
-        recompute_scale_factor=False).detach()
-    # we give parsing maps lower weight (1/16)
-    inputs = torch.cat((x, x_p/16.), dim=1)
+        x = transform(frame).unsqueeze(dim=0).to(self.device)
+        # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
+        # followed by downsampling the parsing maps
+        x_p = F.interpolate(
+            parsingpredictor(2*(F.interpolate(
+                x,
+                scale_factor=2,
+                mode='bilinear',
+                align_corners=False)))[0],
+            scale_factor=0.5,
+            recompute_scale_factor=False).detach()
+        # we give parsing maps lower weight (1/16)
+        inputs = torch.cat((x, x_p/16.), dim=1)
 
-    return s_w, inputs
+        return s_w, inputs
 
 
 if __name__ == '__main__':
@@ -291,7 +291,7 @@ if __name__ == '__main__':
             frame = cv2.resize(frame, original_frame_size)
 
             # Compute VToonify Features
-            s_w, inputs = processingStyle(device, frame, s_w)
+            s_w, inputs = vtoonify_handler.processingStyle(frame, s_w)
 
             # Process Image with VToonify
             y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=args.style_degree)
