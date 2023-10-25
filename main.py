@@ -138,17 +138,18 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         return frame
 
 
+    def encode_face_img(self, frame):
+        I = align_face(frame, self.landmarkpredictor)
+        I = transform(I).unsqueeze(dim=0).to(self.device)
+
+        s_w = pspencoder(I)
+
+        return s_w
+
+
 def window_slide():
     if len(embeddings_buffer) > SLIDING_WINDOW_SIZE:
         embeddings_buffer.pop(0)
-
-def encode_face_img(device, frame, landmarkpredictor):
-    I = align_face(frame, landmarkpredictor)
-    I = transform(I).unsqueeze(dim=0).to(device)
-
-    s_w = pspencoder(I)
-
-    return s_w
 
 
 def processingStyle(device, frame, s_w):
@@ -264,7 +265,7 @@ if __name__ == '__main__':
             frame = vtoonify_handler.pre_processingImage(frame, args.scale_image, args.padding)
 
             # Encode Image
-            s_w = encode_face_img(device, frame, vtoonify_handler.landmarkpredictor)
+            s_w = vtoonify_handler.encode_face_img(frame)
 
             # Stylize pSp image
             if args.psp_style:
