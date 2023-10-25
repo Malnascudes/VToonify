@@ -242,16 +242,15 @@ if __name__ == '__main__':
 
     Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
     for file in Path(args.content).glob('*'):
+        filename = args.content + '/' + file.name
+        basename = os.path.basename(filename).split('.')[0]
+        
+        # Save paths
+        cropname = os.path.join(args.output_path, basename + '_input.jpg')
+        savename = os.path.join(args.output_path, basename + '_vtoonify_' + args.backbone[0] + '.jpg')
+        sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM_' + args.backbone[0] + '.jpg')
+        print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
         with torch.no_grad():
-            filename = args.content + '/' + file.name
-            basename = os.path.basename(filename).split('.')[0]
-            print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
-            
-            # Save paths
-            cropname = os.path.join(args.output_path, basename + '_input.jpg')
-            savename = os.path.join(args.output_path, basename + '_vtoonify_' + args.backbone[0] + '.jpg')
-            sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM_' + args.backbone[0] + '.jpg')
-
             # Load image
             frame = cv2.imread(filename)
 
