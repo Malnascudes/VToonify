@@ -294,7 +294,7 @@ if __name__ == '__main__':
             s_w, inputs = vtoonify_handler.processingStyle(frame, s_w)
 
             # Process Image with VToonify
-            y_tilde = vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=args.style_degree)
+            y_tilde = vtoonify_handler.vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=args.style_degree)
             y_tilde = torch.clamp(y_tilde, -1, 1)
 
             # Save Output Image
