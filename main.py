@@ -164,6 +164,16 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             self.embeddings_buffer.pop(0)
 
 
+    def pSpFeaturesBufferMean(self):
+        if len(self.embeddings_buffer) > 1:
+            all_latents = torch.stack(self.embeddings_buffer, dim=0)
+            s_w = torch.mean(all_latents, dim=0)
+        else:
+            s_w = self.embeddings_buffer[0]
+        s_w = s_w.unsqueeze(0)
+
+        return s_w
+
 def processingStyle(device, frame, s_w):
     s_w = vtoonify.zplus2wplus(s_w)
     if vtoonify.backbone == 'dualstylegan':
@@ -187,15 +197,6 @@ def processingStyle(device, frame, s_w):
     inputs = torch.cat((x, x_p/16.), dim=1)
 
     return s_w, inputs
-
-
-def pSpFeaturesBufferMean(features_buffer):
-    if len(features_buffer) > 1:
-        all_latents = torch.stack(features_buffer, dim=0)
-        s_w = torch.mean(all_latents, dim=0)
-    else:
-        s_w = features_buffer[0]
-    return s_w.unsqueeze(0)
 
 
 def decodeFeaturesToImg(s_w, vtoonify):
@@ -276,7 +277,7 @@ if __name__ == '__main__':
             vtoonify_handler.window_slide()
 
             # Compute Mean
-            s_w = pSpFeaturesBufferMean(vtoonify_handler.embeddings_buffer)
+            s_w = vtoonify_handler.pSpFeaturesBufferMean()
 
             # Update VToonify Frame to mean face
             original_frame_size = frame.shape[:2]
