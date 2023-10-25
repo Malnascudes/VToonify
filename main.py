@@ -174,6 +174,14 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         return s_w
 
+    def decodeFeaturesToImg(self, s_w):
+        s_w = self.vtoonify.zplus2wplus(s_w)
+        frame_tensor, _ = self.vtoonify.generator.generator([s_w], input_is_latent=True, randomize_noise=True)
+        # frame_tensor, _ = self.vtoonify.generator([s_w], s_w, input_is_latent=True, randomize_noise=True, use_res=False)
+        frame = ((frame_tensor[0].detach().cpu().numpy().transpose(1, 2, 0) + 1.0) * 127.5).astype(np.uint8)
+        # frame = frame_tensor.detach().cpu().numpy().astype(np.uint8)
+        return frame
+
 def processingStyle(device, frame, s_w):
     s_w = vtoonify.zplus2wplus(s_w)
     if vtoonify.backbone == 'dualstylegan':
@@ -197,15 +205,6 @@ def processingStyle(device, frame, s_w):
     inputs = torch.cat((x, x_p/16.), dim=1)
 
     return s_w, inputs
-
-
-def decodeFeaturesToImg(s_w, vtoonify):
-    s_w = vtoonify.zplus2wplus(s_w)
-    frame_tensor, _ = vtoonify.generator.generator([s_w], input_is_latent=True, randomize_noise=True)
-    # frame_tensor, _ = vtoonify.generator([s_w], s_w, input_is_latent=True, randomize_noise=True, use_res=False)
-    frame = ((frame_tensor[0].detach().cpu().numpy().transpose(1, 2, 0) + 1.0) * 127.5).astype(np.uint8)
-    # frame = frame_tensor.detach().cpu().numpy().astype(np.uint8)
-    return frame
 
 
 if __name__ == '__main__':
@@ -281,7 +280,7 @@ if __name__ == '__main__':
 
             # Update VToonify Frame to mean face
             original_frame_size = frame.shape[:2]
-            frame = decodeFeaturesToImg(s_w, vtoonify)
+            frame = vtoonify_handler.decodeFeaturesToImg(s_w)
 
             if args.skip_vtoonify:
                 cv2.imwrite(sum_savename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
