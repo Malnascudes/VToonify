@@ -88,11 +88,11 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.backbone = self.manifest['models']['backbone']
         self.vtoonify = VToonify(backbone=self.backbone)
         self.vtoonify.load_state_dict(torch.load(self.manifest['models']['vtoonify'], map_location=lambda storage, loc: storage)['g_ema'])
-        self.vtoonify.to(device)
+        self.vtoonify.to(self.device)
 
         self.parsingpredictor = BiSeNet(n_classes=19)
         self.parsingpredictor.load_state_dict(torch.load(self.manifest['models']['faceparsing'], map_location=lambda storage, loc: storage))
-        self.parsingpredictor.to(device).eval()
+        self.parsingpredictor.to(self.device).eval()
 
         # Load Landmark Predictor model
         face_landmark_modelname = './checkpoint/shape_predictor_68_face_landmarks.dat'
@@ -106,18 +106,63 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.landmarkpredictor = dlib.shape_predictor(face_landmark_modelname)
 
         # Load pSp
-        self.pspencoder = load_psp_standalone(self.manifest['models']['style_encoder'], device)
+        self.pspencoder = load_psp_standalone(self.manifest['models']['style_encoder'], self.device)
 
         # Load External Styles
         if self.backbone == 'dualstylegan':
             self.exstyles = np.load(self.manifest['models']['exstyle'], allow_pickle='TRUE').item()
             stylename = list(self.exstyles.keys())[self.manifest['models']['style_id']]
-            self.exstyle = torch.tensor(self.exstyles[stylename]).to(device)
+            self.exstyle = torch.tensor(self.exstyles[stylename]).to(self.device)
             with torch.no_grad():
                 self.exstyle = self.vtoonify.zplus2wplus(self.exstyle)
 
 
         self.initialized = True
+
+    def handle(self, filename, scale_image, padding, latent_mask, style_degree, skip_vtoonify):
+        with torch.no_grad():
+            # Load image
+            frame = cv2.imread(filename)
+
+            # Preprocess Image
+            frame = vtoonify_handler.pre_processingImage(frame, scale_image, padding)
+
+            # Encode Image
+            s_w = vtoonify_handler.encode_face_img(frame)
+
+            # Stylize pSp image
+            if args.psp_style:
+                print('Stylizing image with pSp')
+                s_w = vtoonify_handler.applyExstyle(s_w, vtoonify_handler.exstyle, latent_mask)
+
+            vtoonify_handler.embeddings_buffer.append(torch.squeeze(s_w))
+            vtoonify_handler.window_slide()
+
+            # Compute Mean
+            s_w = vtoonify_handler.pSpFeaturesBufferMean()
+
+            # Update VToonify Frame to mean face
+            original_frame_size = frame.shape[:2]
+            frame = vtoonify_handler.decodeFeaturesToImg(s_w)
+
+            if skip_vtoonify:
+                output_image = frame
+                return output_image, None
+
+            print('Using VToonify to stylize image')
+            # Resize frame to save memory
+            frame = cv2.resize(frame, original_frame_size)
+
+            # Compute VToonify Features
+            s_w, inputs = vtoonify_handler.processingStyle(frame, s_w)
+
+            # Process Image with VToonify
+            y_tilde = vtoonify_handler.vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=style_degree)
+            y_tilde = torch.clamp(y_tilde, -1, 1)
+
+            # Save Output Image
+            output_image = self.normalize_image(y_tilde[0].cpu())
+            return output_image, frame
 
 
     def pre_processingImage(self, frame, scale_image, padding):
@@ -206,6 +251,10 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         return s_w, inputs
 
+    @staticmethod
+    def normalize_image(img):
+        tmp = ((img.detach().cpu().numpy().transpose(1, 2, 0) + 1.0) * 127.5).astype(np.uint8)
+        return tmp
 
 if __name__ == '__main__':
     parser = Arguments()
@@ -249,47 +298,18 @@ if __name__ == '__main__':
         cropname = os.path.join(args.output_path, basename + '_input.jpg')
         savename = os.path.join(args.output_path, basename + '_vtoonify_' + args.backbone[0] + '.jpg')
         sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM_' + args.backbone[0] + '.jpg')
+
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
-        with torch.no_grad():
-            # Load image
-            frame = cv2.imread(filename)
+        result_image, cropimage = vtoonify_handler.handle(
+            filename,
+            args.scale_image,
+            args.padding,
+            latent_mask,
+            args.style_degree,
+            args.skip_vtoonify,
+        )
 
-            # Preprocess Image
-            frame = vtoonify_handler.pre_processingImage(frame, args.scale_image, args.padding)
-
-            # Encode Image
-            s_w = vtoonify_handler.encode_face_img(frame)
-
-            # Stylize pSp image
-            if args.psp_style:
-                print('Stylizing image with pSp')
-                s_w = vtoonify_handler.applyExstyle(s_w, vtoonify_handler.exstyle, latent_mask)
-
-            vtoonify_handler.embeddings_buffer.append(torch.squeeze(s_w))
-            vtoonify_handler.window_slide()
-
-            # Compute Mean
-            s_w = vtoonify_handler.pSpFeaturesBufferMean()
-
-            # Update VToonify Frame to mean face
-            original_frame_size = frame.shape[:2]
-            frame = vtoonify_handler.decodeFeaturesToImg(s_w)
-
-            if args.skip_vtoonify:
-                cv2.imwrite(sum_savename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-                continue
-
-            print('Using VToonify to stylize image')
-            # Resize frame to save memory
-            frame = cv2.resize(frame, original_frame_size)
-
-            # Compute VToonify Features
-            s_w, inputs = vtoonify_handler.processingStyle(frame, s_w)
-
-            # Process Image with VToonify
-            y_tilde = vtoonify_handler.vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=args.style_degree)
-            y_tilde = torch.clamp(y_tilde, -1, 1)
-
-            # Save Output Image
-            cv2.imwrite(cropname, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-            save_image(y_tilde[0].cpu(), savename)
+        output_path = sum_savename if args.skip_vtoonify else savename
+        result_image = cv2.imwrite(output_path, cv2.cvtColor(result_image, cv2.COLOR_RGB2BGR))
+        if cropimage is not None:
+            cv2.imwrite(cropname, cv2.cvtColor(cropimage, cv2.COLOR_RGB2BGR))
