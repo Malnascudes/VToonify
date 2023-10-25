@@ -141,9 +141,9 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
     def encode_face_img(self, frame):
         I = align_face(frame, self.landmarkpredictor)
-        I = transform(I).unsqueeze(dim=0).to(self.device)
+        I = self.transform(I).unsqueeze(dim=0).to(self.device)
 
-        s_w = pspencoder(I)
+        s_w = self.pspencoder(I)
 
         return s_w
 
@@ -183,18 +183,18 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         return frame
 
     def processingStyle(self, frame, s_w):
-        s_w = vtoonify.zplus2wplus(s_w)
-        if vtoonify.backbone == 'dualstylegan':
+        s_w = self.vtoonify.zplus2wplus(s_w)
+        if self.vtoonify.backbone == 'dualstylegan':
             if args.color_transfer:
-                s_w = exstyle
+                s_w = self.exstyle
             else:
-                s_w[:, :7] = exstyle[:, :7]
+                s_w[:, :7] = self.exstyle[:, :7]
 
-        x = transform(frame).unsqueeze(dim=0).to(self.device)
+        x = self.transform(frame).unsqueeze(dim=0).to(self.device)
         # parsing network works best on 512x512 images, so we predict parsing maps on upsmapled frames
         # followed by downsampling the parsing maps
         x_p = F.interpolate(
-            parsingpredictor(2*(F.interpolate(
+            self.parsingpredictor(2*(F.interpolate(
                 x,
                 scale_factor=2,
                 mode='bilinear',
@@ -233,12 +233,6 @@ if __name__ == '__main__':
     vtoonify_handler = VToonifyHandler()
     vtoonify_handler.initialize(context)
 
-    vtoonify = vtoonify_handler.vtoonify
-    parsingpredictor = vtoonify_handler.parsingpredictor
-    transform = vtoonify_handler.transform
-    exstyle = vtoonify_handler.exstyle
-    pspencoder = vtoonify_handler.pspencoder
-
     print('Loaded models successfully!')
 
     # Constants and variables
@@ -270,7 +264,7 @@ if __name__ == '__main__':
             # Stylize pSp image
             if args.psp_style:
                 print('Stylizing image with pSp')
-                s_w = vtoonify_handler.applyExstyle(s_w, exstyle, latent_mask)
+                s_w = vtoonify_handler.applyExstyle(s_w, vtoonify_handler.exstyle, latent_mask)
 
             vtoonify_handler.embeddings_buffer.append(torch.squeeze(s_w))
             vtoonify_handler.window_slide()
