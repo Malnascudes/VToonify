@@ -126,6 +126,17 @@ def decodeFeaturesToImg(s_w, vtoonify):
     return frame
 
 
+def applyExstyle(s_w, exstyle, latent_mask):
+    if exstyle is None:
+        print('No exstyle, skipping pSp styling')
+        return s_w
+
+    for i in latent_mask:
+        s_w[:, i] = exstyle[:, i]
+
+    return s_w
+
+
 if __name__ == '__main__':
     parser = Arguments()
     args = parser.parse()
