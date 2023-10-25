@@ -15,7 +15,8 @@ from torchvision import transforms
 from util import get_video_crop_parameter
 from util import load_psp_standalone
 from util import save_image
-
+from ts.torch_handler.base_handler import BaseHandler
+from ts.context import Context
 
 SLIDING_WINDOW_SIZE = 2
 
@@ -44,6 +45,80 @@ class Arguments():
         if self.opt.exstyle_path is None:
             self.opt.exstyle_path = os.path.join(os.path.dirname(self.opt.ckpt), 'exstyle_code.npy')
         return self.opt
+
+class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from BaseHandler
+    """
+    A custom model handler implementation.
+    """
+
+    def __init__(self):
+        self._context = None
+        self.initialized = False
+        self.explain = False
+        self.target = 0
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+        ])
+
+    def initialize(self, context):
+        """
+        Initialize model. This will be called during model loading time
+        :param context: Initial context contains model server system properties.
+        :return:
+        """
+
+        # From Torchserve on how to init. I guess manifest and other variables are necessary for propper working.
+        # Content will be handled by Torchserve and include the necessary information
+        self._context = context
+
+        #  load the model
+        self.manifest = context.manifest
+
+        properties = context.system_properties
+        model_dir = properties.get("model_dir")
+        '''
+        self.device = torch.device("cuda:" + str(properties.get("gpu_id")) if torch.cuda.is_available() else "cpu")
+        
+        # Read model serialize/pt file
+        '''
+        # serialized_file = self.manifest['model']['serializedFile']
+        # model_pt_path = os.path.join(model_dir, serialized_file)
+
+        # Load VToonify
+        self.backbone = self.manifest['models']['backbone']
+        self.vtoonify = VToonify(backbone=self.backbone)
+        self.vtoonify.load_state_dict(torch.load(self.manifest['models']['vtoonify'], map_location=lambda storage, loc: storage)['g_ema'])
+        self.vtoonify.to(device)
+
+        self.parsingpredictor = BiSeNet(n_classes=19)
+        self.parsingpredictor.load_state_dict(torch.load(self.manifest['models']['faceparsing'], map_location=lambda storage, loc: storage))
+        self.parsingpredictor.to(device).eval()
+
+        # Load Landmark Predictor model
+        face_landmark_modelname = './checkpoint/shape_predictor_68_face_landmarks.dat'
+        if not os.path.exists(face_landmark_modelname):
+            import wget
+            import bz2
+            wget.download('http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2', face_landmark_modelname+'.bz2')
+            zipfile = bz2.BZ2File(face_landmark_modelname+'.bz2')
+            data = zipfile.read()
+            open(face_landmark_modelname, 'wb').write(data)
+        self.landmarkpredictor = dlib.shape_predictor(face_landmark_modelname)
+
+        # Load pSp
+        self.pspencoder = load_psp_standalone(self.manifest['models']['style_encoder'], device)
+
+        # Load External Styles
+        if self.backbone == 'dualstylegan':
+            self.exstyles = np.load(self.manifest['models']['exstyle'], allow_pickle='TRUE').item()
+            stylename = list(self.exstyles.keys())[self.manifest['models']['style_id']]
+            self.exstyle = torch.tensor(self.exstyles[stylename]).to(device)
+            with torch.no_grad():
+                self.exstyle = self.vtoonify.zplus2wplus(self.exstyle)
+
+
+        self.initialized = True
 
 
 def window_slide():
@@ -147,42 +222,28 @@ if __name__ == '__main__':
     print('*'*98)
 
     device = 'cpu' if args.cpu else 'cuda'
+    model_dir = "pretrained_models"
+    model_name = "psp_ffhq_encode.pt"
+    manifest = {
+        'models': {
+            'vtoonify': args.ckpt,
+            'faceparsing': args.faceparsing_path,
+            'style_encoder': args.style_encoder_path,
+            'backbone': args.backbone,
+            'exstyle': args.exstyle_path,
+            'style_id': args.style_id,
+        }
+    }
+    context = Context(model_dir=model_dir, model_name="vtoonify", manifest=manifest,batch_size=1,gpu=0,mms_version="1.0.0")
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
-    ])
+    vtoonify_handler = VToonifyHandler()
+    vtoonify_handler.initialize(context)
 
-    # Load VToonify
-    vtoonify = VToonify(backbone=args.backbone)
-    vtoonify.load_state_dict(torch.load(args.ckpt, map_location=lambda storage, loc: storage)['g_ema'])
-    vtoonify.to(device)
-
-    parsingpredictor = BiSeNet(n_classes=19)
-    parsingpredictor.load_state_dict(torch.load(args.faceparsing_path, map_location=lambda storage, loc: storage))
-    parsingpredictor.to(device).eval()
-
-    # Load Landmark Predictor model
-    face_landmark_modelname = './checkpoint/shape_predictor_68_face_landmarks.dat'
-    if not os.path.exists(face_landmark_modelname):
-        import wget
-        import bz2
-        wget.download('http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2', face_landmark_modelname+'.bz2')
-        zipfile = bz2.BZ2File(face_landmark_modelname+'.bz2')
-        data = zipfile.read()
-        open(face_landmark_modelname, 'wb').write(data)
-    landmarkpredictor = dlib.shape_predictor(face_landmark_modelname)
-
-    # Load pSp
-    pspencoder = load_psp_standalone(args.style_encoder_path, device)
-
-    # Load External Styles
-    if args.backbone == 'dualstylegan':
-        exstyles = np.load(args.exstyle_path, allow_pickle='TRUE').item()
-        stylename = list(exstyles.keys())[args.style_id]
-        exstyle = torch.tensor(exstyles[stylename]).to(device)
-        with torch.no_grad():
-            exstyle = vtoonify.zplus2wplus(exstyle)
+    vtoonify = vtoonify_handler.vtoonify
+    parsingpredictor = vtoonify_handler.parsingpredictor
+    transform = vtoonify_handler.transform
+    exstyle = vtoonify_handler.exstyle
+    pspencoder = vtoonify_handler.pspencoder
 
     print('Loaded models successfully!')
 
@@ -200,10 +261,10 @@ if __name__ == '__main__':
             print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
 
             # Preprocess Image
-            cropname, savename, sum_savename, frame = pre_processingImage(args, filename, basename, landmarkpredictor)
+            cropname, savename, sum_savename, frame = pre_processingImage(args, filename, basename, vtoonify_handler.landmarkpredictor)
 
             # Encode Image
-            s_w = encode_face_img(device, frame, landmarkpredictor)
+            s_w = encode_face_img(device, frame, vtoonify_handler.landmarkpredictor)
 
             # Stylize pSp image
             if args.psp_style:
