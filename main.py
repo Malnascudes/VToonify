@@ -189,6 +189,7 @@ if __name__ == '__main__':
     # Constants and variables
     scale = 1
     kernel_1d = np.array([[0.125], [0.375], [0.375], [0.125]])
+    latent_mask = [10,11,12,13,14]
     embeddings_buffer = []
 
     Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
@@ -203,6 +204,12 @@ if __name__ == '__main__':
 
             # Encode Image
             s_w = encode_face_img(device, frame, landmarkpredictor)
+
+            # Stylize pSp image
+            if args.psp_style:
+                print('Stylizing image with pSp')
+                s_w = applyExstyle(s_w, exstyle, latent_mask)
+
             embeddings_buffer.append(torch.squeeze(s_w))
             window_slide()
 
