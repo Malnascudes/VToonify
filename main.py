@@ -60,6 +60,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
+        self.embeddings_buffer = []
 
     def initialize(self, context):
         """
@@ -158,9 +159,9 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         return s_w
 
 
-def window_slide():
-    if len(embeddings_buffer) > SLIDING_WINDOW_SIZE:
-        embeddings_buffer.pop(0)
+    def window_slide(self):
+        if len(self.embeddings_buffer) > SLIDING_WINDOW_SIZE:
+            self.embeddings_buffer.pop(0)
 
 
 def processingStyle(device, frame, s_w):
@@ -244,7 +245,6 @@ if __name__ == '__main__':
     scale = 1
     kernel_1d = np.array([[0.125], [0.375], [0.375], [0.125]])
     latent_mask = [10,11,12,13,14]
-    embeddings_buffer = []
 
     Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
     for file in Path(args.content).glob('*'):
@@ -272,11 +272,11 @@ if __name__ == '__main__':
                 print('Stylizing image with pSp')
                 s_w = vtoonify_handler.applyExstyle(s_w, exstyle, latent_mask)
 
-            embeddings_buffer.append(torch.squeeze(s_w))
-            window_slide()
+            vtoonify_handler.embeddings_buffer.append(torch.squeeze(s_w))
+            vtoonify_handler.window_slide()
 
             # Compute Mean
-            s_w = pSpFeaturesBufferMean(embeddings_buffer)
+            s_w = pSpFeaturesBufferMean(vtoonify_handler.embeddings_buffer)
 
             # Update VToonify Frame to mean face
             original_frame_size = frame.shape[:2]
