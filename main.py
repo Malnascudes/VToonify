@@ -179,16 +179,8 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             # Resize frame to save memory
             frame = cv2.resize(frame, original_frame_size)
 
-            # Compute VToonify Features
-            mean_s_w, inputs = self.processingStyle(frame, mean_s_w)
-
-            # Process Image with VToonify
-            y_tilde = self.vtoonify(inputs, mean_s_w.repeat(inputs.size(0), 1, 1), d_s=self.style_degree)
-            y_tilde = torch.clamp(y_tilde, -1, 1)
-
-            # Save Output Image
-            output_image = self.normalize_image(y_tilde[0].cpu())
-            return output_image, frame
+            vtoonfy_output_image = self.apply_vtoonify(frame, mean_s_w)
+            return vtoonfy_output_image, frame
 
     def encode_face_img(self, frame):
         I = align_face(frame, self.landmarkpredictor)
@@ -230,6 +222,19 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         frame = ((frame_tensor[0].detach().cpu().numpy().transpose(1, 2, 0) + 1.0) * 127.5).astype(np.uint8)
         # frame = frame_tensor.detach().cpu().numpy().astype(np.uint8)
         return frame
+
+    def apply_vtoonify(self, frame, s_w):
+        # Compute VToonify Features
+        s_w, inputs = self.processingStyle(frame, s_w)
+
+        # Process Image with VToonify
+        y_tilde = self.vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=self.style_degree)
+        y_tilde = torch.clamp(y_tilde, -1, 1)
+
+        # Save Output Image
+        output_image = self.normalize_image(y_tilde[0].cpu())
+
+        return output_image
 
     def processingStyle(self, frame, s_w):
         s_w = self.vtoonify.zplus2wplus(s_w)
