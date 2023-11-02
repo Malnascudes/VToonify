@@ -168,6 +168,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             mean_s_w = self.pSpFeaturesBufferMean()
 
             # Update VToonify Frame to mean face
+            print('Decoding mean image')
             original_frame_size = model_input.shape[:2]
             frame = self.decodeFeaturesToImg(mean_s_w)
 
