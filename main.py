@@ -128,9 +128,10 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         frame = cv2.imread(filename)
 
         # Preprocess Image
-        frame = self.pre_processingImage(frame, scale_image, padding)
+        with torch.no_grad():
+            frame = self.pre_processingImage(frame, scale_image, padding)
 
-        model_output = self.inference(frame)
+            model_output = self.inference(frame)
 
         return model_output
 
@@ -156,34 +157,33 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         return frame
 
     def inference(self, model_input):
-        with torch.no_grad():
-            # Encode Image
-            s_w = self.encode_face_img(model_input)
+        # Encode Image
+        s_w = self.encode_face_img(model_input)
 
-            # Stylize pSp image
-            print('Stylizing image with pSp')
-            s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
+        # Stylize pSp image
+        print('Stylizing image with pSp')
+        s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
 
-            self.embeddings_buffer.append(torch.squeeze(s_w))
-            self.window_slide()
+        self.embeddings_buffer.append(torch.squeeze(s_w))
+        self.window_slide()
 
-            # Compute Mean
-            mean_s_w = self.pSpFeaturesBufferMean()
+        # Compute Mean
+        mean_s_w = self.pSpFeaturesBufferMean()
 
-            # Update VToonify Frame to mean face
-            print('Decoding mean image')
-            original_frame_size = model_input.shape[:2]
-            frame = self.decodeFeaturesToImg(mean_s_w)
+        # Update VToonify Frame to mean face
+        print('Decoding mean image')
+        original_frame_size = model_input.shape[:2]
+        frame = self.decodeFeaturesToImg(mean_s_w)
 
-            if self.skip_vtoonify:
-                return None, frame
+        if self.skip_vtoonify:
+            return None, frame
 
-            print('Using VToonify to stylize image')
-            # Resize frame to save memory
-            frame = cv2.resize(frame, original_frame_size)
+        print('Using VToonify to stylize image')
+        # Resize frame to save memory
+        frame = cv2.resize(frame, original_frame_size)
 
-            vtoonfy_output_image = self.apply_vtoonify(frame, mean_s_w)
-            return vtoonfy_output_image, frame
+        vtoonfy_output_image = self.apply_vtoonify(frame, mean_s_w)
+        return vtoonfy_output_image, frame
 
     def encode_face_img(self, face_image):
         s_w = self.pspencoder(face_image)
