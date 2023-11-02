@@ -37,7 +37,7 @@ class Arguments():
         self.parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
         self.parser.add_argument('--padding', type=int, nargs=4, default=[200, 200, 200, 200], help='left, right, top, bottom paddings to the face center')
         self.parser.add_argument('--skip_vtoonify', action='store_true', help='Skip VToonify Styling and create final image only with generator model')
-        self.parser.add_argument('--psp_style', action='store_true', help='Mix face and style after pSp encoding')
+        self.parser.add_argument('--psp_style', type=int, nargs='*', help='Mix face and style after pSp encoding', default=[])
 
     def parse(self):
         self.opt = self.parser.parse_args()
@@ -206,9 +206,8 @@ if __name__ == '__main__':
             s_w = encode_face_img(device, frame, landmarkpredictor)
 
             # Stylize pSp image
-            if args.psp_style:
-                print('Stylizing image with pSp')
-                s_w = applyExstyle(s_w, exstyle, latent_mask)
+            print('Stylizing image with pSp')
+            s_w = applyExstyle(s_w, exstyle, args.psp_style)
 
             embeddings_buffer.append(torch.squeeze(s_w))
             window_slide()
