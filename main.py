@@ -303,12 +303,11 @@ if __name__ == '__main__':
         basename = os.path.basename(filename).split('.')[0]
         
         # Save paths
-        cropname = os.path.join(args.output_path, basename + '_input.jpg')
-        savename = os.path.join(args.output_path, basename + '_vtoonify_' + args.backbone[0] + '.jpg')
-        sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM_' + args.backbone[0] + '.jpg')
+        sum_savename = os.path.join(args.output_path, basename + '_sum_' + args.backbone[0] + '.jpg')
+        vtoonify_save_path = os.path.join(args.output_path, basename + '_sum_vtoonify_' + args.backbone[0] + '.jpg')
 
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
-        cropimage, result_image = vtoonify_handler.handle(
+        vtoonfy_output_image, psp_encoded_image = vtoonify_handler.handle(
             filename,
             args.scale_image,
             args.padding,
@@ -317,7 +316,6 @@ if __name__ == '__main__':
             args.skip_vtoonify,
         )
 
-        output_path = sum_savename if args.skip_vtoonify else savename
-        result_image = cv2.imwrite(output_path, cv2.cvtColor(result_image, cv2.COLOR_RGB2BGR))
-        if cropimage is not None:
-            cv2.imwrite(cropname, cv2.cvtColor(cropimage, cv2.COLOR_RGB2BGR))
+        psp_encoded_image = cv2.imwrite(sum_savename, cv2.cvtColor(psp_encoded_image, cv2.COLOR_RGB2BGR))
+        if vtoonfy_output_image is not None:
+            cv2.imwrite(vtoonify_save_path, cv2.cvtColor(vtoonfy_output_image, cv2.COLOR_RGB2BGR))
