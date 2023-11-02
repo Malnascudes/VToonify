@@ -187,6 +187,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         I = self.transform(I).unsqueeze(dim=0).to(self.device)
 
         s_w = self.pspencoder(I)
+        s_w = self.vtoonify.zplus2wplus(s_w)
 
         return s_w
 
@@ -216,7 +217,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         return s_w
 
     def decodeFeaturesToImg(self, s_w):
-        s_w = self.vtoonify.zplus2wplus(s_w)
         frame_tensor, _ = self.vtoonify.generator.generator([s_w], input_is_latent=True, randomize_noise=True)
         # frame_tensor, _ = self.vtoonify.generator([s_w], s_w, input_is_latent=True, randomize_noise=True, use_res=False)
         frame = ((frame_tensor[0].detach().cpu().numpy().transpose(1, 2, 0) + 1.0) * 127.5).astype(np.uint8)
