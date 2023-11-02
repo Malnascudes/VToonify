@@ -169,7 +169,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
             # Update VToonify Frame to mean face
             original_frame_size = model_input.shape[:2]
-            print(f'original_frame_size: {original_frame_size}')
             frame = self.decodeFeaturesToImg(mean_s_w)
 
             if self.skip_vtoonify:
