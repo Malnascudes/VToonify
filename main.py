@@ -164,7 +164,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             output_image = self.normalize_image(y_tilde[0].cpu())
             return output_image, frame
 
-
     def pre_processingImage(self, frame, scale_image, padding):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
@@ -182,7 +181,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
                 frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
 
         return frame
-
 
     def encode_face_img(self, frame):
         I = align_face(frame, self.landmarkpredictor)
@@ -203,11 +201,9 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         return s_w
 
-
     def window_slide(self):
         if len(self.embeddings_buffer) > SLIDING_WINDOW_SIZE:
             self.embeddings_buffer.pop(0)
-
 
     def pSpFeaturesBufferMean(self):
         if len(self.embeddings_buffer) > 1:
