@@ -165,12 +165,12 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             self.window_slide()
 
             # Compute Mean
-            s_w = self.pSpFeaturesBufferMean()
+            mean_s_w = self.pSpFeaturesBufferMean()
 
             # Update VToonify Frame to mean face
             original_frame_size = model_input.shape[:2]
             print(f'original_frame_size: {original_frame_size}')
-            frame = self.decodeFeaturesToImg(s_w)
+            frame = self.decodeFeaturesToImg(mean_s_w)
 
             if self.skip_vtoonify:
                 return None, frame
@@ -180,10 +180,10 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             frame = cv2.resize(frame, original_frame_size)
 
             # Compute VToonify Features
-            s_w, inputs = self.processingStyle(frame, s_w)
+            mean_s_w, inputs = self.processingStyle(frame, mean_s_w)
 
             # Process Image with VToonify
-            y_tilde = self.vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=self.style_degree)
+            y_tilde = self.vtoonify(inputs, mean_s_w.repeat(inputs.size(0), 1, 1), d_s=self.style_degree)
             y_tilde = torch.clamp(y_tilde, -1, 1)
 
             # Save Output Image
