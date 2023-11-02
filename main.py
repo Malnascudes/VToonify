@@ -169,11 +169,11 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
             # Update VToonify Frame to mean face
             original_frame_size = model_input.shape[:2]
+            print(f'original_frame_size: {original_frame_size}')
             frame = self.decodeFeaturesToImg(s_w)
 
             if self.skip_vtoonify:
-                output_image = frame
-                return output_image, None
+                return None, frame
 
             print('Using VToonify to stylize image')
             # Resize frame to save memory
@@ -303,7 +303,7 @@ if __name__ == '__main__':
         sum_savename = os.path.join(args.output_path, basename + '_vtoonify_SUM_' + args.backbone[0] + '.jpg')
 
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
-        result_image, cropimage = vtoonify_handler.handle(
+        cropimage, result_image = vtoonify_handler.handle(
             filename,
             args.scale_image,
             args.padding,
