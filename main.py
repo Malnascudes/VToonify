@@ -120,13 +120,13 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.initialized = True
 
     def handle(self, filename, scale_image, padding, latent_mask, style_degree, skip_vtoonify):
+        # Load image
+        frame = cv2.imread(filename)
+
+        # Preprocess Image
+        frame = self.pre_processingImage(frame, scale_image, padding)
+
         with torch.no_grad():
-            # Load image
-            frame = cv2.imread(filename)
-
-            # Preprocess Image
-            frame = self.pre_processingImage(frame, scale_image, padding)
-
             # Encode Image
             s_w = self.encode_face_img(frame)
 
