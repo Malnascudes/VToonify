@@ -125,25 +125,25 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             frame = cv2.imread(filename)
 
             # Preprocess Image
-            frame = vtoonify_handler.pre_processingImage(frame, scale_image, padding)
+            frame = self.pre_processingImage(frame, scale_image, padding)
 
             # Encode Image
-            s_w = vtoonify_handler.encode_face_img(frame)
+            s_w = self.encode_face_img(frame)
 
             # Stylize pSp image
             if args.psp_style:
                 print('Stylizing image with pSp')
-                s_w = vtoonify_handler.applyExstyle(s_w, vtoonify_handler.exstyle, latent_mask)
+                s_w = self.applyExstyle(s_w, self.exstyle, latent_mask)
 
-            vtoonify_handler.embeddings_buffer.append(torch.squeeze(s_w))
-            vtoonify_handler.window_slide()
+            self.embeddings_buffer.append(torch.squeeze(s_w))
+            self.window_slide()
 
             # Compute Mean
-            s_w = vtoonify_handler.pSpFeaturesBufferMean()
+            s_w = self.pSpFeaturesBufferMean()
 
             # Update VToonify Frame to mean face
             original_frame_size = frame.shape[:2]
-            frame = vtoonify_handler.decodeFeaturesToImg(s_w)
+            frame = self.decodeFeaturesToImg(s_w)
 
             if skip_vtoonify:
                 output_image = frame
@@ -154,10 +154,10 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             frame = cv2.resize(frame, original_frame_size)
 
             # Compute VToonify Features
-            s_w, inputs = vtoonify_handler.processingStyle(frame, s_w)
+            s_w, inputs = self.processingStyle(frame, s_w)
 
             # Process Image with VToonify
-            y_tilde = vtoonify_handler.vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=style_degree)
+            y_tilde = self.vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=style_degree)
             y_tilde = torch.clamp(y_tilde, -1, 1)
 
             # Save Output Image
