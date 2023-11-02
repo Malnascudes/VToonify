@@ -38,7 +38,7 @@ class Arguments():
         self.parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
         self.parser.add_argument('--padding', type=int, nargs=4, default=[200, 200, 200, 200], help='left, right, top, bottom paddings to the face center')
         self.parser.add_argument('--skip_vtoonify', action='store_true', help='Skip VToonify Styling and create final image only with generator model')
-        self.parser.add_argument('--psp_style', action='store_true', help='Mix face and style after pSp encoding')
+        self.parser.add_argument('--psp_style', type=int, nargs='*', help='Mix face and style after pSp encoding', default=[])
 
     def parse(self):
         self.opt = self.parser.parse_args()
@@ -131,9 +131,8 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             s_w = self.encode_face_img(frame)
 
             # Stylize pSp image
-            if args.psp_style:
-                print('Stylizing image with pSp')
-                s_w = self.applyExstyle(s_w, self.exstyle, latent_mask)
+            print('Stylizing image with pSp')
+            s_w = self.applyExstyle(s_w, self.exstyle, latent_mask)
 
             self.embeddings_buffer.append(torch.squeeze(s_w))
             self.window_slide()
@@ -283,7 +282,6 @@ if __name__ == '__main__':
     # Constants and variables
     scale = 1
     kernel_1d = np.array([[0.125], [0.375], [0.375], [0.125]])
-    latent_mask = [10,11,12,13,14]
 
     Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
     for file in Path(args.content).glob('*'):
@@ -300,7 +298,7 @@ if __name__ == '__main__':
             filename,
             args.scale_image,
             args.padding,
-            latent_mask,
+            args.psp_style,
             args.style_degree,
             args.skip_vtoonify,
         )
