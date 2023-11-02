@@ -120,48 +120,19 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.initialized = True
 
     def handle(self, filename, scale_image, padding, latent_mask, style_degree, skip_vtoonify):
+        self.latent_mask = latent_mask
+        self.style_degree = style_degree
+        self.skip_vtoonify = skip_vtoonify
+
         # Load image
         frame = cv2.imread(filename)
 
         # Preprocess Image
         frame = self.pre_processingImage(frame, scale_image, padding)
 
-        with torch.no_grad():
-            # Encode Image
-            s_w = self.encode_face_img(frame)
+        model_output = self.inference(frame)
 
-            # Stylize pSp image
-            print('Stylizing image with pSp')
-            s_w = self.applyExstyle(s_w, self.exstyle, latent_mask)
-
-            self.embeddings_buffer.append(torch.squeeze(s_w))
-            self.window_slide()
-
-            # Compute Mean
-            s_w = self.pSpFeaturesBufferMean()
-
-            # Update VToonify Frame to mean face
-            original_frame_size = frame.shape[:2]
-            frame = self.decodeFeaturesToImg(s_w)
-
-            if skip_vtoonify:
-                output_image = frame
-                return output_image, None
-
-            print('Using VToonify to stylize image')
-            # Resize frame to save memory
-            frame = cv2.resize(frame, original_frame_size)
-
-            # Compute VToonify Features
-            s_w, inputs = self.processingStyle(frame, s_w)
-
-            # Process Image with VToonify
-            y_tilde = self.vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=style_degree)
-            y_tilde = torch.clamp(y_tilde, -1, 1)
-
-            # Save Output Image
-            output_image = self.normalize_image(y_tilde[0].cpu())
-            return output_image, frame
+        return model_output
 
     def pre_processingImage(self, frame, scale_image, padding):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -180,6 +151,44 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
                 frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
 
         return frame
+
+    def inference(self, model_input):
+        with torch.no_grad():
+            # Encode Image
+            s_w = self.encode_face_img(model_input)
+
+            # Stylize pSp image
+            print('Stylizing image with pSp')
+            s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
+
+            self.embeddings_buffer.append(torch.squeeze(s_w))
+            self.window_slide()
+
+            # Compute Mean
+            s_w = self.pSpFeaturesBufferMean()
+
+            # Update VToonify Frame to mean face
+            original_frame_size = model_input.shape[:2]
+            frame = self.decodeFeaturesToImg(s_w)
+
+            if self.skip_vtoonify:
+                output_image = frame
+                return output_image, None
+
+            print('Using VToonify to stylize image')
+            # Resize frame to save memory
+            frame = cv2.resize(frame, original_frame_size)
+
+            # Compute VToonify Features
+            s_w, inputs = self.processingStyle(frame, s_w)
+
+            # Process Image with VToonify
+            y_tilde = self.vtoonify(inputs, s_w.repeat(inputs.size(0), 1, 1), d_s=self.style_degree)
+            y_tilde = torch.clamp(y_tilde, -1, 1)
+
+            # Save Output Image
+            output_image = self.normalize_image(y_tilde[0].cpu())
+            return output_image, frame
 
     def encode_face_img(self, frame):
         I = align_face(frame, self.landmarkpredictor)
