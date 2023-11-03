@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn.functional as nnf
+from tqdm import tqdm
 from model.bisenet.model import BiSeNet
 from model.encoder.align_all_parallel import align_face
 from model.vtoonify import VToonify
@@ -17,6 +18,7 @@ from util import load_psp_standalone
 from util import save_image
 from ts.torch_handler.base_handler import BaseHandler
 from ts.context import Context
+from utils.interpolate import interpolate
 
 SLIDING_WINDOW_SIZE = 2
 
@@ -62,6 +64,8 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         ])
         self.embeddings_buffer = []
         self.vtoonify_input_image_size = (256,256)
+        self.FPS = 25
+        self.duration_per_image = 1
 
     def initialize(self, context):
         """
@@ -144,7 +148,8 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
             mean_s_w = self.pSpFeaturesBufferMean()
 
-            model_output = self.s_w_to_stylized_image(mean_s_w)
+            animation_frames = self.generate_animation([self.embeddings_buffer[-1], mean_s_w])
+            model_output = animation_frames
 
         return model_output
 
@@ -214,6 +219,21 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         s_w = s_w.unsqueeze(0)
 
         return s_w
+
+    def generate_animation(self, encodings, FPS=25, duration_per_image=1):
+        encodings = [encoding.squeeze() for encoding in encodings]
+        animation_frames = []
+
+        for s_w in tqdm(interpolate(
+                latents_list=encodings, duration_list=[duration_per_image]*len(encodings),
+                interpolation_type="linear",
+                loop=False,
+                FPS=FPS,
+            ), desc='Generating morphing animation'):
+            animation_frame = self.s_w_to_stylized_image(s_w)
+            animation_frames.append(animation_frame)
+
+        return animation_frames
 
     def decodeFeaturesToImg(self, s_w):
         frame_tensor, _ = self.vtoonify.generator.generator([s_w], input_is_latent=True, randomize_noise=True)
@@ -314,4 +334,4 @@ if __name__ == '__main__':
             args.skip_vtoonify,
         )
 
-        cv2.imwrite(sum_savename, cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(sum_savename, cv2.cvtColor(output_image[-1], cv2.COLOR_RGB2BGR)) # save only last frame for test
