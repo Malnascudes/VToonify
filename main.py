@@ -61,6 +61,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
         self.embeddings_buffer = []
+        self.vtoonify_input_image_size = (256,256)
 
     def initialize(self, context):
         """
@@ -172,7 +173,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Update VToonify Frame to mean face
         print('Decoding mean image')
-        original_frame_size = model_input.shape[:2]
         frame = self.decodeFeaturesToImg(mean_s_w)
 
         if self.skip_vtoonify:
@@ -180,7 +180,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         print('Using VToonify to stylize image')
         # Resize frame to save memory
-        frame = cv2.resize(frame, original_frame_size)
+        frame = cv2.resize(frame, self.vtoonify_input_image_size)
 
         vtoonfy_output_image = self.apply_vtoonify(frame, mean_s_w)
         return vtoonfy_output_image, frame
