@@ -130,9 +130,19 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Preprocess Image
         with torch.no_grad():
-            frame = self.pre_processingImage(frame, scale_image, padding)
+            model_input = self.pre_processingImage(frame, scale_image, padding)
 
-            _, mean_s_w = self.inference(frame)
+            # Encode Image
+            s_w = self.encode_face_img(model_input)
+
+            # Stylize pSp image
+            print('Stylizing image with pSp')
+            s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
+
+            self.embeddings_buffer.append(torch.squeeze(s_w))
+            self.window_slide()
+
+            mean_s_w = self.pSpFeaturesBufferMean()
 
             model_output = self.s_w_to_stylized_image(mean_s_w)
 
@@ -158,22 +168,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         frame = self.transform(frame).unsqueeze(dim=0).to(self.device)
 
         return frame
-
-    def inference(self, model_input):
-        # Encode Image
-        s_w = self.encode_face_img(model_input)
-
-        # Stylize pSp image
-        print('Stylizing image with pSp')
-        s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
-
-        self.embeddings_buffer.append(torch.squeeze(s_w))
-        self.window_slide()
-
-        # Compute Mean
-        mean_s_w = self.pSpFeaturesBufferMean()
-
-        return s_w, mean_s_w
 
     def s_w_to_stylized_image(self, s_w):
         # Update VToonify Frame to mean face
