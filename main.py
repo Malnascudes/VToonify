@@ -132,7 +132,9 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         with torch.no_grad():
             frame = self.pre_processingImage(frame, scale_image, padding)
 
-            model_output = self.inference(frame)
+            _, mean_s_w = self.inference(frame)
+
+            model_output = self.s_w_to_stylized_image(mean_s_w)
 
         return model_output
 
@@ -171,9 +173,12 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         # Compute Mean
         mean_s_w = self.pSpFeaturesBufferMean()
 
+        return s_w, mean_s_w
+
+    def s_w_to_stylized_image(self, s_w):
         # Update VToonify Frame to mean face
         print('Decoding mean image')
-        frame = self.decodeFeaturesToImg(mean_s_w)
+        frame = self.decodeFeaturesToImg(s_w)
 
         if self.skip_vtoonify:
             return None, frame
@@ -182,7 +187,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         # Resize frame to save memory
         frame = cv2.resize(frame, self.vtoonify_input_image_size)
 
-        vtoonfy_output_image = self.apply_vtoonify(frame, mean_s_w)
+        vtoonfy_output_image = self.apply_vtoonify(frame, s_w)
         return vtoonfy_output_image, frame
 
     def encode_face_img(self, face_image):
