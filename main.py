@@ -175,14 +175,14 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         frame = self.decodeFeaturesToImg(s_w)
 
         if self.skip_vtoonify:
-            return None, frame
+            return frame
 
         print('Using VToonify to stylize image')
         # Resize frame to save memory
         frame = cv2.resize(frame, self.vtoonify_input_image_size)
 
         vtoonfy_output_image = self.apply_vtoonify(frame, s_w)
-        return vtoonfy_output_image, frame
+        return vtoonfy_output_image
 
     def encode_face_img(self, face_image):
         s_w = self.pspencoder(face_image)
@@ -303,10 +303,9 @@ if __name__ == '__main__':
         
         # Save paths
         sum_savename = os.path.join(args.output_path, basename + '_sum_' + args.backbone[0] + '.jpg')
-        vtoonify_save_path = os.path.join(args.output_path, basename + '_sum_vtoonify_' + args.backbone[0] + '.jpg')
 
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
-        vtoonfy_output_image, psp_encoded_image = vtoonify_handler.handle(
+        output_image = vtoonify_handler.handle(
             filename,
             args.scale_image,
             args.padding,
@@ -315,6 +314,4 @@ if __name__ == '__main__':
             args.skip_vtoonify,
         )
 
-        psp_encoded_image = cv2.imwrite(sum_savename, cv2.cvtColor(psp_encoded_image, cv2.COLOR_RGB2BGR))
-        if vtoonfy_output_image is not None:
-            cv2.imwrite(vtoonify_save_path, cv2.cvtColor(vtoonfy_output_image, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(sum_savename, cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR))
