@@ -18,7 +18,7 @@ from util import load_psp_standalone
 from util import save_image
 from ts.torch_handler.base_handler import BaseHandler
 from ts.context import Context
-from utils.interpolate import interpolate
+from util import interpolate
 
 SLIDING_WINDOW_SIZE = 2
 
