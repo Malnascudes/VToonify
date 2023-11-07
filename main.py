@@ -81,6 +81,9 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.vtoonify_input_image_size = (256,256)
         self.FPS = 25
         self.duration_per_image = 1
+        self.scale_image = True
+        self.padding = [200, 200, 200, 200]
+        self.kernel_1d = np.array([[0.125], [0.375], [0.375], [0.125]])
 
     def initialize(self, context):
         """
@@ -165,7 +168,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Preprocess Image
         with torch.no_grad():
-            model_input = self.pre_processingImage(frame, scale_image, padding)
+            model_input = self.pre_processingImage(frame)
 
             # Encode Image
             s_w = self.encode_face_img(model_input)
@@ -184,20 +187,20 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         return model_output
 
-    def pre_processingImage(self, frame, scale_image, padding):
+    def pre_processingImage(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         # We detect the face in the image, and resize the image so that the eye distance is 64 pixels.
         # Centered on the eyes, we crop the image to almost 400x400 (based on args.padding).
-        if scale_image:
-            paras = get_video_crop_parameter(frame, self.landmarkpredictor, padding)
+        if self.scale_image:
+            paras = get_video_crop_parameter(frame, self.landmarkpredictor, self.padding)
             if paras is not None:
                 h, w, top, bottom, left, right, scale = paras
                 # for HR image, we apply gaussian blur to it to avoid over-sharp stylization results
                 if scale <= 0.75:
-                    frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
+                    frame = cv2.sepFilter2D(frame, -1, self.kernel_1d, self.kernel_1d)
                 if scale <= 0.375:
-                    frame = cv2.sepFilter2D(frame, -1, kernel_1d, kernel_1d)
+                    frame = cv2.sepFilter2D(frame, -1, self.kernel_1d, self.kernel_1d)
                 frame = cv2.resize(frame, (w, h))[top:bottom, left:right]
 
         frame = align_face(frame, self.landmarkpredictor)
