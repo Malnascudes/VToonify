@@ -30,30 +30,38 @@ from util import interpolate
 SLIDING_WINDOW_SIZE = 2
 
 
-class Arguments():
-    def __init__(self):
-        self.parser = argparse.ArgumentParser(description='Style Transfer')
-        self.parser.add_argument('--content', type=str, default='./data', help='path of the folder with the content image/video')
-        self.parser.add_argument('--style_id', type=int, default=26, help='the id of the style image')
-        self.parser.add_argument('--style_degree', type=float, default=0.5, help='style degree for VToonify-D')
-        self.parser.add_argument('--color_transfer', action='store_true', help='transfer the color of the style')
-        self.parser.add_argument('--ckpt', type=str, default='./checkpoint/vtoonify_d_cartoon/vtoonify_s_d.pt', help='path of the saved model')
-        self.parser.add_argument('--output_path', type=str, default='./output/', help='path of the output images')
-        self.parser.add_argument('--scale_image', action='store_true', help='resize and crop the image to best fit the model')
-        self.parser.add_argument('--style_encoder_path', type=str, default='./checkpoint/encoder.pt', help='path of the style encoder')
-        self.parser.add_argument('--exstyle_path', type=str, default=None, help='path of the extrinsic style code')
-        self.parser.add_argument('--faceparsing_path', type=str, default='./checkpoint/faceparsing.pth', help='path of the face parsing model')
-        self.parser.add_argument('--cpu', action='store_true', help='if true, only use cpu')
-        self.parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
-        self.parser.add_argument('--padding', type=int, nargs=4, default=[200, 200, 200, 200], help='left, right, top, bottom paddings to the face center')
-        self.parser.add_argument('--skip_vtoonify', action='store_true', help='Skip VToonify Styling and create final image only with generator model')
-        self.parser.add_argument('--psp_style', type=int, nargs='*', help='Mix face and style after pSp encoding', default=[])
+def setup_parser():
+    parser = argparse.ArgumentParser(description='Style Transfer')
+    
+    # Add arguments to the parser
+    parser.add_argument('--content', type=str, default='./data', help='path of the folder with the content image/video')
+    # ... (add the rest of the arguments in a similar way)
 
-    def parse(self):
-        self.opt = self.parser.parse_args()
-        if self.opt.exstyle_path is None:
-            self.opt.exstyle_path = os.path.join(os.path.dirname(self.opt.ckpt), 'exstyle_code.npy')
-        return self.opt
+
+    parser = argparse.ArgumentParser(description='Style Transfer')
+    parser.add_argument('--content', type=str, default='./data', help='path of the folder with the content image/video')
+    parser.add_argument('--style_id', type=int, default=26, help='the id of the style image')
+    parser.add_argument('--style_degree', type=float, default=0.5, help='style degree for VToonify-D')
+    parser.add_argument('--color_transfer', action='store_true', help='transfer the color of the style')
+    parser.add_argument('--ckpt', type=str, default='./checkpoint/vtoonify_d_cartoon/vtoonify_s_d.pt', help='path of the saved model')
+    parser.add_argument('--output_path', type=str, default='./output/', help='path of the output images')
+    parser.add_argument('--scale_image', action='store_true', help='resize and crop the image to best fit the model')
+    parser.add_argument('--style_encoder_path', type=str, default='./checkpoint/encoder.pt', help='path of the style encoder')
+    parser.add_argument('--exstyle_path', type=str, default=None, help='path of the extrinsic style code')
+    parser.add_argument('--faceparsing_path', type=str, default='./checkpoint/faceparsing.pth', help='path of the face parsing model')
+    parser.add_argument('--cpu', action='store_true', help='if true, only use cpu')
+    parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
+    parser.add_argument('--padding', type=int, nargs=4, default=[200, 200, 200, 200], help='left, right, top, bottom paddings to the face center')
+    parser.add_argument('--skip_vtoonify', action='store_true', help='Skip VToonify Styling and create final image only with generator model')
+    parser.add_argument('--psp_style', type=int, nargs='*', help='Mix face and style after pSp encoding', default=[])
+
+    return parser
+
+def parse(parser):
+    opt = parser.parse_args()
+    if opt.exstyle_path is None:
+        opt.exstyle_path = os.path.join(os.path.dirname(opt.ckpt), 'exstyle_code.npy')
+    return opt
 
 class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from BaseHandler
     """
@@ -97,17 +105,36 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         # model_pt_path = os.path.join(model_dir, serialized_file)
 
         # Load VToonify
-        self.backbone = self.manifest['models']['backbone']
+        if 'USING_TORCHSERVE' in os.environ: # if we are realy in torchserve
+            self.backbone = "dualstylegan"
+            vtoonify_path = "vtoonify_s_d.pt"
+            faceparsing_path = "faceparsing.pth"
+            face_landmark_modelname = 'shape_predictor_68_face_landmarks.dat'
+            style_encoder_path = "encoder.pt"
+            exstyle_path = "exstyle_code.npy"
+            self.latent_mask = [10,11,12,13,14]
+            self.style_degree = 0.0
+            self.skip_vtoonify = True
+        else:
+            self.backbone = self.manifest['models']['backbone']
+            vtoonify_path = self.manifest['models']['vtoonify']
+            faceparsing_path = self.manifest['models']['faceparsing']
+            face_landmark_modelname = './checkpoint/shape_predictor_68_face_landmarks.dat'
+            style_encoder_path = self.manifest['models']['style_encoder']
+            exstyle_path = self.manifest['models']['exstyle']
+            self.latent_mask = self.manifest['latent_mask']
+            self.style_degree = self.manifest['style_degree']
+            self.skip_vtoonify = self.manifest['skip_vtoonify']
+
         self.vtoonify = VToonify(backbone=self.backbone)
-        self.vtoonify.load_state_dict(torch.load(self.manifest['models']['vtoonify'], map_location=lambda storage, loc: storage)['g_ema'])
+        self.vtoonify.load_state_dict(torch.load(vtoonify_path, map_location=lambda storage, loc: storage)['g_ema'])
         self.vtoonify.to(self.device)
 
         self.parsingpredictor = BiSeNet(n_classes=19)
-        self.parsingpredictor.load_state_dict(torch.load(self.manifest['models']['faceparsing'], map_location=lambda storage, loc: storage))
+        self.parsingpredictor.load_state_dict(torch.load(faceparsing_path, map_location=lambda storage, loc: storage))
         self.parsingpredictor.to(self.device).eval()
 
         # Load Landmark Predictor model
-        face_landmark_modelname = './checkpoint/shape_predictor_68_face_landmarks.dat'
         if not os.path.exists(face_landmark_modelname):
             import wget
             import bz2
@@ -118,11 +145,11 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.landmarkpredictor = dlib.shape_predictor(face_landmark_modelname)
 
         # Load pSp
-        self.pspencoder = load_psp_standalone(self.manifest['models']['style_encoder'], self.device)
+        self.pspencoder = load_psp_standalone(style_encoder_path, self.device)
 
         # Load External Styles
         if self.backbone == 'dualstylegan':
-            self.exstyles = np.load(self.manifest['models']['exstyle'], allow_pickle='TRUE').item()
+            self.exstyles = np.load(exstyle_path, allow_pickle='TRUE').item()
             stylename = list(self.exstyles.keys())[self.manifest['models']['style_id']]
             self.exstyle = torch.tensor(self.exstyles[stylename]).to(self.device)
             with torch.no_grad():
@@ -292,8 +319,8 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         return tmp
 
 if __name__ == '__main__':
-    parser = Arguments()
-    args = parser.parse()
+    parser = setup_parser()
+    args = parse(parser)
     print('Loaded arguments')
     for name, value in sorted(vars(args).items()):
         print('%s: %s' % (str(name), str(value)))
