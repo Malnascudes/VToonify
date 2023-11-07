@@ -3,9 +3,9 @@ import os
 from pathlib import Path
 
 import cv2
+import torch
 import dlib
 import numpy as np
-import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 if 'MAR-INF' in os.listdir():
