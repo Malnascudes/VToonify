@@ -372,10 +372,6 @@ if __name__ == '__main__':
 
     print('Loaded models successfully!')
 
-    # Constants and variables
-    scale = 1
-    kernel_1d = np.array([[0.125], [0.375], [0.375], [0.125]])
-
     Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
     for file in Path(args.content).glob('*'):
         filename = args.content + '/' + file.name
