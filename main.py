@@ -158,11 +158,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         self.initialized = True
 
-    def handle(self, filename, scale_image, padding, latent_mask, style_degree, skip_vtoonify):
-        self.latent_mask = latent_mask
-        self.style_degree = style_degree
-        self.skip_vtoonify = skip_vtoonify
-
+    def handle(self, data, context):
         # Load image
         frame = cv2.imread(filename)
 
@@ -359,13 +355,6 @@ if __name__ == '__main__':
         sum_savename = os.path.join(args.output_path, basename + '_sum_' + args.backbone[0] + '.jpg')
 
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
-        output_image = vtoonify_handler.handle(
-            filename,
-            args.scale_image,
-            args.padding,
-            args.psp_style,
-            args.style_degree,
-            args.skip_vtoonify,
-        )
+        output_image = vtoonify_handler.handle(filename, context)
 
         cv2.imwrite(sum_savename, cv2.cvtColor(output_image[-1], cv2.COLOR_RGB2BGR)) # save only last frame for test
