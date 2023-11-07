@@ -7,7 +7,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 
-from model.bisenet.resnet import Resnet18
+import os
+if 'USING_TORCHSERVE' in os.environ:
+    from resnet import Resnet18
+else:
+    from model.bisenet.resnet import Resnet18
 # from modules.bn import InPlaceABNSync as BatchNorm2d
 
 

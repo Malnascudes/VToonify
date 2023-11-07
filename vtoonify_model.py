@@ -12,7 +12,11 @@ import numpy as np
 import dlib
 import cv2
 from model.vtoonify import VToonify
-from model.bisenet.model import BiSeNet
+import os
+if 'USING_TORCHSERVE' in os.environ:
+    from model.bisenet.bisnet_model import BiSeNet
+else:
+    from model.bisenet.bisnet_model import BiSeNet
 import torch.nn.functional as F
 from torchvision import transforms
 from model.encoder.align_all_parallel import align_face

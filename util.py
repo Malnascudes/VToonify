@@ -11,9 +11,15 @@ from torch.nn import functional as F
 from torch import autograd
 from torch.nn import init
 import torchvision.transforms as transforms
-from model.stylegan.op_cpu import conv2d_gradfix
-from model.encoder.encoders.psp_encoders import GradualStyleEncoder
-from model.encoder.align_all_parallel import get_landmark
+import os
+if 'USING_TORCHSERVE' in os.environ:
+    import conv2d_gradfix
+    from psp_encoders import GradualStyleEncoder
+    from align_all_parallel import get_landmark
+else:
+    from model.stylegan.op_cpu import conv2d_gradfix
+    from model.encoder.encoders.psp_encoders import GradualStyleEncoder
+    from model.encoder.align_all_parallel import get_landmark
     
 def visualize(img_arr, dpi):
     plt.figure(figsize=(10,10),dpi=dpi)

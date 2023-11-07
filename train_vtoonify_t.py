@@ -15,9 +15,9 @@ from tqdm import tqdm
 from PIL import Image
 from util import *
 from model.stylegan import lpips
-from model.stylegan.model import Generator, Downsample
+from model.stylegan.stylegan_model import Generator, Downsample
 from model.vtoonify import VToonify, ConditionalDiscriminator
-from model.bisenet.model import BiSeNet
+from model.bisenet.bisnet_model import BiSeNet
 from model.simple_augment import random_apply_affine
 from model.stylegan.distributed import (
     get_rank,

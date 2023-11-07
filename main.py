@@ -7,11 +7,18 @@ import dlib
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torch.nn.functional as nnf
 from tqdm import tqdm
-from model.bisenet.model import BiSeNet
-from model.encoder.align_all_parallel import align_face
-from model.vtoonify import VToonify
+if 'MAR-INF' in os.listdir():
+    print('Inside Trochserve')
+    os.environ['USING_TORCHSERVE'] = 'true'
+if 'USING_TORCHSERVE' in os.environ:
+    from align_all_parallel import align_face
+    from bisnet_model import BiSeNet
+    from vtoonify import VToonify
+else:
+    from model.bisenet.bisnet_model import BiSeNet
+    from model.encoder.align_all_parallel import align_face
+    from model.vtoonify import VToonify
 from torchvision import transforms
 from util import get_video_crop_parameter
 from util import load_psp_standalone

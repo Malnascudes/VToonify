@@ -4,8 +4,13 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn import Linear, Conv2d, BatchNorm2d, PReLU, Sequential, Module
 
-from model.encoder.encoders.helpers import get_blocks, Flatten, bottleneck_IR, bottleneck_IR_SE
-from model.stylegan.model import EqualLinear
+import os
+if 'USING_TORCHSERVE' in os.environ:
+    from helpers import get_blocks, Flatten, bottleneck_IR, bottleneck_IR_SE
+    from stylegan_model import EqualLinear
+else:
+    from model.encoder.encoders.helpers import get_blocks, Flatten, bottleneck_IR, bottleneck_IR_SE
+    from model.stylegan.stylegan_model import EqualLinear
 
 
 class GradualStyleBlock(Module):

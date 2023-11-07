@@ -2,8 +2,13 @@ import torch
 import numpy as np
 import math
 from torch import nn
-from model.stylegan.model import ConvLayer, EqualLinear, Generator, ResBlock
-from model.dualstylegan import AdaptiveInstanceNorm, AdaResBlock, DualStyleGAN
+import os
+if 'USING_TORCHSERVE' in os.environ:
+    from stylegan_model import ConvLayer, EqualLinear, Generator, ResBlock
+    from dualstylegan import AdaptiveInstanceNorm, AdaResBlock, DualStyleGAN
+else:
+    from model.stylegan.stylegan_model import ConvLayer, EqualLinear, Generator, ResBlock
+    from model.dualstylegan import AdaptiveInstanceNorm, AdaResBlock, DualStyleGAN
 import torch.nn.functional as F
 
 # IC-GAN: stylegan discriminator    
