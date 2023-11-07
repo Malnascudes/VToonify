@@ -383,3 +383,15 @@ if __name__ == '__main__':
 
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
         output_image = vtoonify_handler.handle(input_image, context)
+
+        model_response = vtoonify_handler.handle([{'body': input_image}], context)
+
+        test_output_path = args.output_path + '/' + basename
+        os.makedirs(test_output_path, exist_ok=True)
+        for i, frame_base64 in enumerate(model_response[0]['video_frames']):
+            frame_bytes = base64.b64decode(frame_base64)
+            frame_array = np.frombuffer(frame_bytes, np.uint8)
+            frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+            
+            frame_path = f'{test_output_path}/{i}.jpeg'
+            cv2.imwrite(frame_path, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)) # save only last frame for test
