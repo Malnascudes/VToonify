@@ -153,8 +153,9 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Load External Styles
         if self.backbone == 'dualstylegan':
+            self.style_id = -1
             self.exstyles = np.load(exstyle_path, allow_pickle='TRUE').item()
-            stylename = list(self.exstyles.keys())[self.manifest['models']['style_id']]
+            stylename = list(self.exstyles.keys())[self.style_id]
             self.exstyle = torch.tensor(self.exstyles[stylename]).to(self.device)
             with torch.no_grad():
                 self.exstyle = self.vtoonify.zplus2wplus(self.exstyle)
