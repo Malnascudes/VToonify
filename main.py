@@ -27,7 +27,6 @@ from ts.torch_handler.base_handler import BaseHandler
 from ts.context import Context
 from util import interpolate
 
-SLIDING_WINDOW_SIZE = 2
 
 
 def setup_parser():
@@ -80,6 +79,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.embeddings_buffer = []
         self.vtoonify_input_image_size = (256,256)
         self.FPS = 25
+        self.SLIDING_WINDOW_SIZE = 2
         self.duration_per_image = 1
         self.scale_image = True
         self.padding = [200, 200, 200, 200]
@@ -243,7 +243,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         return s_w
 
     def window_slide(self):
-        if len(self.embeddings_buffer) > SLIDING_WINDOW_SIZE:
+        if len(self.embeddings_buffer) > self.SLIDING_WINDOW_SIZE:
             self.embeddings_buffer.pop(0)
 
     def pSpFeaturesBufferMean(self):
