@@ -26,7 +26,7 @@ from util import save_image
 from ts.torch_handler.base_handler import BaseHandler
 from ts.context import Context
 from util import interpolate
-
+import base64
 
 
 def setup_parser():
@@ -188,7 +188,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             animation_frames = self.generate_animation([self.embeddings_buffer[-1], mean_s_w])
             model_output = animation_frames
 
-        return model_output
+        return self.postprocess(model_output)
 
     def pre_processingImage(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -320,6 +320,26 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
     def normalize_image(img):
         tmp = ((img.detach().cpu().numpy().transpose(1, 2, 0) + 1.0) * 127.5).astype(np.uint8)
         return tmp
+
+    def postprocess(self, inference_output):
+        """
+        Return inference result.
+        :param inference_output: list of inference output
+        :return: list of predict results
+        """
+        # Take output from network and post-process to desired format
+        
+        encoded_frames = [self.image_to_base64(image) for image in inference_output]
+        postprocess_output = {'video_frames': encoded_frames}
+        # postprocess_output = {'video_frames': [encoded_frames[0], encoded_frames[-1]]}
+        return [postprocess_output]
+
+    @staticmethod
+    def image_to_base64(image):
+        print('Encoding image')
+        _, im_arr = cv2.imencode('.JPEG', image, [int(cv2.IMWRITE_JPEG_QUALITY), 80])  # im_arr: image in Numpy one-dim array format.
+        byte_arr = im_arr.tobytes()
+        return base64.b64encode(byte_arr).decode('utf-8')
 
 if __name__ == '__main__':
     parser = setup_parser()
