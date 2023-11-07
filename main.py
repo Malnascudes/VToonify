@@ -22,7 +22,6 @@ else:
 from torchvision import transforms
 from util import get_video_crop_parameter
 from util import load_psp_standalone
-from util import save_image
 from ts.torch_handler.base_handler import BaseHandler
 from ts.context import Context
 from util import interpolate
