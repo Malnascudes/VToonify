@@ -129,6 +129,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.vtoonify = VToonify(backbone=self.backbone)
         self.vtoonify.load_state_dict(torch.load(vtoonify_path, map_location=lambda storage, loc: storage)['g_ema'])
         self.vtoonify.to(self.device)
+        self.color_transfer = True
 
         self.parsingpredictor = BiSeNet(n_classes=19)
         self.parsingpredictor.load_state_dict(torch.load(faceparsing_path, map_location=lambda storage, loc: storage))
@@ -288,7 +289,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
     def processingStyle(self, frame, s_w):
         s_w = self.vtoonify.zplus2wplus(s_w)
         if self.vtoonify.backbone == 'dualstylegan':
-            if args.color_transfer:
+            if self.color_transfer:
                 s_w = self.exstyle
             else:
                 s_w[:, :7] = self.exstyle[:, :7]
