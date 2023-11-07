@@ -360,7 +360,10 @@ if __name__ == '__main__':
             'backbone': args.backbone,
             'exstyle': args.exstyle_path,
             'style_id': args.style_id,
-        }
+        },
+        'latent_mask': args.psp_style,
+        'style_degree': args.style_degree,
+        'skip_vtoonify': args.skip_vtoonify,
     }
     context = Context(model_dir=model_dir, model_name="vtoonify", manifest=manifest,batch_size=1,gpu=0,mms_version="1.0.0")
 
