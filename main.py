@@ -112,7 +112,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             vtoonify_path = "vtoonify_s_d.pt"
             faceparsing_path = "faceparsing.pth"
             face_landmark_modelname = 'shape_predictor_68_face_landmarks.dat'
-            style_encoder_path = "encoder.pt"
+            style_encoder_path = "encoder.pt" # pSp encoder url https://drive.google.com/file/d/1bMTNWkh5LArlaWSc_wa8VKyq2V42T2z0/view
             exstyle_path = "exstyle_code.npy"
             self.latent_mask = [10,11,12,13,14]
             self.style_degree = 0.0
