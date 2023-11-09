@@ -271,7 +271,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         return animation_frames
 
     def decodeFeaturesToImg(self, s_w):
-        frame_tensor, _ = self.vtoonify.generator.generator([s_w], input_is_latent=True, randomize_noise=True)
+        frame_tensor, _ = self.vtoonify.generator.generator([s_w], input_is_latent=True, randomize_noise=False)
         # frame_tensor, _ = self.vtoonify.generator([s_w], s_w, input_is_latent=True, randomize_noise=True, use_res=False)
         frame = ((frame_tensor[0].detach().cpu().numpy().transpose(1, 2, 0) + 1.0) * 127.5)
         # frame = frame_tensor.detach().cpu().numpy().astype(np.uint8)
