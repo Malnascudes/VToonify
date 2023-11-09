@@ -227,7 +227,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
     def encode_face_img(self, face_image):
         s_w = self.pspencoder(face_image)
-        s_w = self.vtoonify.zplus2wplus(s_w)
 
         return s_w
 
