@@ -381,7 +381,6 @@ if __name__ == '__main__':
             input_image = bytearray(f)
 
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
-        output_image = vtoonify_handler.handle(input_image, context)
 
         model_response = vtoonify_handler.handle([{'body': input_image}], context)
 
