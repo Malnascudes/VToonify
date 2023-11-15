@@ -180,6 +180,14 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.style_degree = input_item.get('style_degree', self.default_style_degree)
         self.skip_vtoonify = input_item.get('skip_vtoonify', self.default_skip_vtoonify)
 
+        print(f"Handling image with parametters:")
+        print(f"\tFPS: {FPS}")
+        print(f"\tduration_per_image: {duration_per_image}")
+        print(f"\tscale_image: {scale_image}")
+        print(f"\tlatent_mask: {latent_mask}")
+        print(f"\tstyle_degree: {self.style_degree}")
+        print(f"\tskip_vtoonify: {self.skip_vtoonify}")
+
         image_array = np.frombuffer(image_bytes, np.uint8)
         frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
 
