@@ -77,10 +77,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         ])
         self.embeddings_buffer = []
         self.vtoonify_input_image_size = (256,256)
-        self.FPS = 25
         self.SLIDING_WINDOW_SIZE = 2
-        self.duration_per_image = 1
-        self.scale_image = True
         self.padding = [200, 200, 200, 200]
         self.kernel_1d = np.array([[0.125], [0.375], [0.375], [0.125]])
         self.default_FPS = 25
@@ -120,7 +117,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             face_landmark_modelname = 'shape_predictor_68_face_landmarks.dat'
             style_encoder_path = "encoder.pt"
             exstyle_path = "exstyle_code.npy"
-            self.latent_mask = [10,11,12,13,14]
             self.style_degree = 0.0
             self.skip_vtoonify = True
         else:
@@ -130,7 +126,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             face_landmark_modelname = './checkpoint/shape_predictor_68_face_landmarks.dat'
             style_encoder_path = self.manifest['models']['style_encoder']
             exstyle_path = self.manifest['models']['exstyle']
-            self.latent_mask = self.manifest['latent_mask']
             self.style_degree = self.manifest['style_degree']
             self.skip_vtoonify = self.manifest['skip_vtoonify']
 
