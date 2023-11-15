@@ -190,7 +190,11 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
             mean_s_w = self.pSpFeaturesBufferMean()
 
-            animation_frames = self.generate_animation([self.embeddings_buffer[-1], mean_s_w])
+            animation_frames = self.generate_animation(
+                [self.embeddings_buffer[-1], mean_s_w],
+                FPS=self.FPS,
+                duration_per_image=self.duration_per_image,
+            )
             model_output = animation_frames
 
         return self.postprocess(model_output)
