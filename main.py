@@ -193,14 +193,14 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Preprocess Image
         with torch.no_grad():
-            model_input = self.pre_processingImage(frame, self.scale_image)
+            model_input = self.pre_processingImage(frame, scale_image)
 
             # Encode Image
             s_w = self.encode_face_img(model_input)
 
             # Stylize pSp image
             print('Stylizing image with pSp')
-            s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
+            s_w = self.applyExstyle(s_w, self.exstyle, latent_mask)
 
             self.embeddings_buffer.append(torch.squeeze(s_w))
             self.window_slide()
@@ -209,8 +209,8 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
             animation_frames = self.generate_animation(
                 [self.embeddings_buffer[-1], mean_s_w],
-                FPS=self.FPS,
-                duration_per_image=self.duration_per_image,
+                FPS=FPS,
+                duration_per_image=duration_per_image,
             )
             model_output = animation_frames
 
