@@ -166,7 +166,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
     def handle(self, data, context):
         input_item = data[0]['body']
         # Load image
-        image_bytes = input_item['body']
+        image_bytes = base64.b64decode(bytes(input_item['input_image'], encoding="utf8"))
         # Get arguments
         FPS = input_item.get('FPS', self.default_FPS)
         duration_per_image = input_item.get('duration_per_image', self.default_duration_per_image)
@@ -404,7 +404,7 @@ if __name__ == '__main__':
 
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
 
-        model_response = vtoonify_handler.handle([{'body': input_image}], context)
+        model_response = vtoonify_handler.handle([{'body':{"input_image": base64.b64encode(input_image).decode('utf-8'),}},], context)
 
         test_output_path = args.output_path + '/' + basename
         os.makedirs(test_output_path, exist_ok=True)

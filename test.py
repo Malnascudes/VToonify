@@ -14,7 +14,11 @@ def send_image_and_decode_response(image_path):
 
     # Send image to the endpoint
     i_t = time()
-    response = requests.post('http://127.0.0.1:8080/predictions/vToonify', files={'body': image_bytes})
+    encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+    payload={
+        'input_image': encoded_image,
+    }
+    response = requests.post('http://127.0.0.1:8080/predictions/vToonify', json=payload)
     print(f'Response took {time() - i_t} seconds')
 
     # Check if the request was successful
