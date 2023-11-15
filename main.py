@@ -404,7 +404,16 @@ if __name__ == '__main__':
 
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
 
-        model_response = vtoonify_handler.handle([{'body':{"input_image": base64.b64encode(input_image).decode('utf-8'),}},], context)
+        model_response = vtoonify_handler.handle([{'body':{
+            "input_image": base64.b64encode(input_image).decode('utf-8'),
+            "FPS": 30,
+            "duration_per_image": 2,
+            "scale_image": args.scale_image,
+            "latent_mask": args.psp_style,
+            "style_degree": args.style_degree,
+            "skip_vtoonify": args.skip_vtoonify,
+            }},
+        ], context)
 
         test_output_path = args.output_path + '/' + basename
         os.makedirs(test_output_path, exist_ok=True)
