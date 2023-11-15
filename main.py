@@ -176,7 +176,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Preprocess Image
         with torch.no_grad():
-            model_input = self.pre_processingImage(frame)
+            model_input = self.pre_processingImage(frame, self.scale_image)
 
             # Encode Image
             s_w = self.encode_face_img(model_input)
@@ -195,12 +195,12 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         return self.postprocess(model_output)
 
-    def pre_processingImage(self, frame):
+    def pre_processingImage(self, frame, scale_image):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         # We detect the face in the image, and resize the image so that the eye distance is 64 pixels.
         # Centered on the eyes, we crop the image to almost 400x400 (based on args.padding).
-        if self.scale_image:
+        if scale_image:
             paras = get_video_crop_parameter(frame, self.landmarkpredictor, self.padding)
             if paras is not None:
                 h, w, top, bottom, left, right, scale = paras
