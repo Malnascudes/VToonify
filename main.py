@@ -169,8 +169,17 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.initialized = True
 
     def handle(self, data, context):
+        input_item = data[0]['body']
         # Load image
-        image_bytes = data[0]['body']
+        image_bytes = input_item['body']
+        # Get arguments
+        FPS = input_item.get('FPS', self.default_FPS)
+        duration_per_image = input_item.get('duration_per_image', self.default_duration_per_image)
+        scale_image = input_item.get('scale_image', self.default_scale_image)
+        latent_mask = input_item.get('latent_mask', self.default_latent_mask)
+        self.style_degree = input_item.get('style_degree', self.default_style_degree)
+        self.skip_vtoonify = input_item.get('skip_vtoonify', self.default_skip_vtoonify)
+
         image_array = np.frombuffer(image_bytes, np.uint8)
         frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
 
