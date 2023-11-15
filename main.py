@@ -83,6 +83,12 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.scale_image = True
         self.padding = [200, 200, 200, 200]
         self.kernel_1d = np.array([[0.125], [0.375], [0.375], [0.125]])
+        self.default_FPS = 25
+        self.default_duration_per_image = 1
+        self.default_scale_image = False
+        self.default_latent_mask = []
+        self.default_style_degree = 0.1
+        self.default_skip_vtoonify = True
 
     def initialize(self, context):
         """
