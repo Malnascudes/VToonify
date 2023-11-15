@@ -117,8 +117,6 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             face_landmark_modelname = 'shape_predictor_68_face_landmarks.dat'
             style_encoder_path = "encoder.pt"
             exstyle_path = "exstyle_code.npy"
-            self.style_degree = 0.0
-            self.skip_vtoonify = True
         else:
             self.backbone = self.manifest['models']['backbone']
             vtoonify_path = self.manifest['models']['vtoonify']
@@ -126,8 +124,9 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             face_landmark_modelname = './checkpoint/shape_predictor_68_face_landmarks.dat'
             style_encoder_path = self.manifest['models']['style_encoder']
             exstyle_path = self.manifest['models']['exstyle']
-            self.style_degree = self.manifest['style_degree']
-            self.skip_vtoonify = self.manifest['skip_vtoonify']
+
+        self.style_degree = self.default_style_degree
+        self.skip_vtoonify = self.default_skip_vtoonify
 
         self.vtoonify = VToonify(backbone=self.backbone)
         self.vtoonify.load_state_dict(torch.load(vtoonify_path, map_location=lambda storage, loc: storage)['g_ema'])
