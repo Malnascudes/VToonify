@@ -54,7 +54,7 @@ systemctl stop anydesk.service
 
 ## Start TorchServe
 ```
-torchserve --start --model-store model_store --models vToonify=vToonify.mar
+torchserve --start --model-store model_store --models vToonify=vToonify.mar --ts-config config.properties
 ```
 
 
