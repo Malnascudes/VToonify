@@ -159,6 +159,14 @@ docker run --rm -it --runtime=nvidia --gpus all \
             --ts-config /home/model-server/model_files/config.properties
 ```
 
+### Model configuration via config.properties
+
+- max_response_size is set to `104862526` to allow for large videos to be sent as response, otherwise response to large errors may appear
+- inference_address `http://0.0.0.0:8080` 
+  - **THIS HAS TO BE REVIEWED SINCE IT'S LISTENING TO ALL ADRESSES TO BE AVAILABLE OUTSIDE THE CONTAINER** as when running the `python test.py` script. This can be insecure we have to see if it's needed or how to handle this in convination with Nginx
+- management_address `http://0.0.0.0:8081`
+  - **THIS HAS TO BE REVIEWED SINCE IT'S LISTENING TO ALL ADRESSES TO BE AVAILABLE OUTSIDE THE CONTAINER** as when running the `python test.py` script. This can be insecure we have to see if it's needed or how to handle this in convination with Nginx
+
 
 # Refs
 [How to Serve PyTorch Models with TorchServe Youtube Video](https://www.youtube.com/watch?v=XlO7iQMV3Ik)
