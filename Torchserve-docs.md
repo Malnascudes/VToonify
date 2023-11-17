@@ -85,15 +85,23 @@ torchserve --stop
 ```
 
 # With Docker
+## Run TorchServe Image
+
+We will now run the docker image with the main code folder as a volume so the important files can be added to the `.mar` file.
+
 ```
 docker run --rm -it -p 8080:8080 -p 8081:8081 \
-            -v $(pwd):/home/model_files \
-            --name mar pytorch/torchserve:latest
-
-docker exec -it --user root mar /bin/bash
-
-cd ../model_files
+            -v $(pwd):/home/model-server/model_files \
+            --name elface-torchserve elface-torchserve-image:latest
 ```
+For GPU
+```
+docker run --rm -it --gpus all \
+            -p 127.0.0.1:8080:8080 -p 127.0.0.1:8081:8081 -p 127.0.0.1:8082:8082 -p 127.0.0.1:7070:7070 -p 127.0.0.1:7071:7071 \
+            -v $(pwd):/home/model-server/model_files \
+            --name elface-torchserve elface-torchserve-image:latest
+```
+
 
 # Refs
 [How to Serve PyTorch Models with TorchServe Youtube Video](https://www.youtube.com/watch?v=XlO7iQMV3Ik)
