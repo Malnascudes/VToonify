@@ -22,7 +22,9 @@ sudo update-alternatives --config java
 ``` 
 
 
-# Generate Model Archiver
+# Local Environment
+
+## Generate Model Archiver
 
 All dependencies (extra files) must be added manualy to the Model Archiver using the `--extra-files` argument. They will be placed at the top folder, making it necessary to change the routes of the files in the imports.
 
@@ -37,9 +39,9 @@ mkdir model_store
 mv vToonify.mar model_store/
 ```
 
-# Run TorchServe
+## Run TorchServe
 
-## Stop anydesk
+### Stop anydesk
 ```
 java.io.IOException: Failed to bind to address 0.0.0.0/0.0.0.0:7070
 ```
@@ -52,23 +54,23 @@ systemctl status anydesk.service
 systemctl stop anydesk.service
 ```
 
-## Start TorchServe
+### Start TorchServe
 ```
 torchserve --start --model-store model_store --models vToonify=vToonify.mar --ts-config config.properties
 ```
 
 
-# Test model running
+## Test model running
 ```
 curl http://localhost:8081/models
 ```
 
-# Run Inference
+## Run Inference
 ```
 curl http://127.0.0.1:8080/predictions/vToonify -T <path-to-image>
 ```
 
-# Stop TorchServe
+## Stop TorchServe
 ```
 torchserve --stop
 ```
