@@ -137,6 +137,28 @@ torch-model-archiver --model-name vToonify --version 1.0 \
 
 To add requirements file use `--requirements-file model_files/requirements.txt`. Should be needed since we are craeting image with dependencies
 
+## Run TorchServe with model
+
+In order to run the model we will run the same docker image but with some differences:
+- Use only `model_store` folder with the `.mar` as volume to keep the main code outside of the container
+- Add `config.properties` via volume
+- Use `--shm-size` to give 14gb of server memory to ensure it has all the necessary resources reserved. From docs "*It enables memory-intensive containers to run faster by giving more access to allocated memory.*"
+- Use `--ulimit memlock=-1` to set the maximum locked-in-memory address space to no limit. This is useful to allow TorchServe to use as much memory as it needs
+- `--ulimit stack` may also be usefull but don't know yet. In the example is set to `67108864`
+
+```
+docker run --rm -it --runtime=nvidia --gpus all \
+            --shm-size=14g \
+            -p 127.0.0.1:8080:8080 -p 127.0.0.1:8081:8081 -p 127.0.0.1:8082:8082 -p 127.0.0.1:7070:7070 -p 127.0.0.1:7071:7071 \
+            -v $(pwd)/model_store:/home/model-server/model_files/model_store \
+            -v ${PWD}/config.properties:/home/model-server/model_files/config.properties \
+            --ulimit memlock=-1 \
+            --name elface-torchserve elface-torchserve-image:latest \
+            torchserve --start --model-store=/home/model-server/model_files/model_store \
+            --models vToonify=vToonify.mar \
+            --ts-config /home/model-server/model_files/config.properties
+```
+
 
 # Refs
 [How to Serve PyTorch Models with TorchServe Youtube Video](https://www.youtube.com/watch?v=XlO7iQMV3Ik)
