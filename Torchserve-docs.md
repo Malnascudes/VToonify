@@ -85,6 +85,17 @@ torchserve --stop
 ```
 
 # With Docker
+
+## Create TorchServe Docker Image
+
+This is done to create a Docker Image that has torhcserve, torch-model-archiver and the required dependencies, that is `numpy`, `opencv-ptyhon`, `Pillow`, `scipy`, `dlib`,  `Ninja` and the nvidia `nvcc` compiler. Otherwise the `.mar` creation will work but the `torchserve --start` command will fail.
+
+```
+docker build -t elface-torchserve-image . -f docker/Dockerfile
+```
+
+This image will be used to both generate the `.mar` file and run the model.
+
 ## Run TorchServe Image
 
 We will now run the docker image with the main code folder as a volume so the important files can be added to the `.mar` file.
