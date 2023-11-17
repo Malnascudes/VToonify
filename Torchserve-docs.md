@@ -66,8 +66,10 @@ curl http://localhost:8081/models
 ```
 
 ## Run Inference
+The `test.py` file has been created to encode an image, send it to the model and save the results in the `./test` folder.
+
 ```
-curl http://127.0.0.1:8080/predictions/vToonify -T <path-to-image>
+python test.py
 ```
 
 ## Stop TorchServe
