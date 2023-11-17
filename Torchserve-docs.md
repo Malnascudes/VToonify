@@ -113,6 +113,30 @@ docker run --rm -it --gpus all \
             --name elface-torchserve elface-torchserve-image:latest
 ```
 
+## Create .mar file
+Enter into the Docker Container
+
+```
+docker exec -it --user root elface-torchserve /bin/bash
+```
+
+Execute the `torch-model-archiver`. The same command as [Generate Model Archiver section](#generate-model-archiver) the docker but:
+- File paths being `./model_files` instead of `./` and adding
+- Add `--export-path /home/model-server/model_files/model_store` to store the `.mar` in the local `model_store` folder
+- Add requirements file to install dependencies.
+  - While running on local they are present in the environment but they need to be added and the installed when starting torchserve
+
+```
+torch-model-archiver --model-name vToonify --version 1.0 \
+--serialized-file ./model_files/checkpoint/arcane/vtoonify_s_d.pt \
+--model-file ./model_files/model/vtoonify.py \
+--handler ./model_files/main \
+--export-path /home/model-server/model_files/model_store \
+--extra-files ./model_files/util.py,./model_files/model/vtoonify.py,./model_files/model/dualstylegan.py,./model_files/model/stylegan/stylegan_model.py,./model_files/model/stylegan/op/__init__.py,./model_files/model/stylegan/op/upfirdn2d_pkg.py,./model_files/model/stylegan/op/fused_act.py,./model_files/model/encoder/align_all_parallel.py,./model_files/model/bisenet/bisnet_model.py,./model_files/model/bisenet/resnet.py,./model_files/model/stylegan/op/upfirdn2d_kernel.cu,./model_files/model/stylegan/op/fused_bias_act.cpp,./model_files/model/stylegan/op/fused_bias_act_kernel.cu,./model_files/model/stylegan/op/upfirdn2d.cpp,./model_files/model/stylegan/op/conv2d_gradfix.py,./model_files/model/encoder/encoders/psp_encoders.py,./model_files/model/encoder/encoders/helpers.py,./model_files/checkpoint/arcane/vtoonify_s_d.pt,./model_files/checkpoint/faceparsing.pth,./model_files/checkpoint/encoder.pt,./model_files/checkpoint/arcane/exstyle_code.npy,./model_files/checkpoint/shape_predictor_68_face_landmarks.dat
+```
+
+To add requirements file use `--requirements-file model_files/requirements.txt`. Should be needed since we are craeting image with dependencies
+
 
 # Refs
 [How to Serve PyTorch Models with TorchServe Youtube Video](https://www.youtube.com/watch?v=XlO7iQMV3Ik)
