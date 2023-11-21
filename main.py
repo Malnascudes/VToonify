@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn.functional as nnf
+from tqdm import tqdm
 from model.bisenet.model import BiSeNet
 from model.encoder.align_all_parallel import align_face
 from model.vtoonify import VToonify
@@ -17,6 +18,7 @@ from util import load_psp_standalone
 from util import save_image
 from ts.torch_handler.base_handler import BaseHandler
 from ts.context import Context
+from utils.interpolate import interpolate
 
 SLIDING_WINDOW_SIZE = 2
 
@@ -61,6 +63,9 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
         self.embeddings_buffer = []
+        self.vtoonify_input_image_size = (256,256)
+        self.FPS = 25
+        self.duration_per_image = 1
 
     def initialize(self, context):
         """
@@ -129,9 +134,22 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Preprocess Image
         with torch.no_grad():
-            frame = self.pre_processingImage(frame, scale_image, padding)
+            model_input = self.pre_processingImage(frame, scale_image, padding)
 
-            model_output = self.inference(frame)
+            # Encode Image
+            s_w = self.encode_face_img(model_input)
+
+            # Stylize pSp image
+            print('Stylizing image with pSp')
+            s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
+
+            self.embeddings_buffer.append(torch.squeeze(s_w))
+            self.window_slide()
+
+            mean_s_w = self.pSpFeaturesBufferMean()
+
+            animation_frames = self.generate_animation([self.embeddings_buffer[-1], mean_s_w])
+            model_output = animation_frames
 
         return model_output
 
@@ -156,34 +174,20 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         return frame
 
-    def inference(self, model_input):
-        # Encode Image
-        s_w = self.encode_face_img(model_input)
-
-        # Stylize pSp image
-        print('Stylizing image with pSp')
-        s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
-
-        self.embeddings_buffer.append(torch.squeeze(s_w))
-        self.window_slide()
-
-        # Compute Mean
-        mean_s_w = self.pSpFeaturesBufferMean()
-
+    def s_w_to_stylized_image(self, s_w):
         # Update VToonify Frame to mean face
         print('Decoding mean image')
-        original_frame_size = model_input.shape[:2]
-        frame = self.decodeFeaturesToImg(mean_s_w)
+        frame = self.decodeFeaturesToImg(s_w)
 
         if self.skip_vtoonify:
-            return None, frame
+            return frame
 
         print('Using VToonify to stylize image')
         # Resize frame to save memory
-        frame = cv2.resize(frame, original_frame_size)
+        frame = cv2.resize(frame, self.vtoonify_input_image_size)
 
-        vtoonfy_output_image = self.apply_vtoonify(frame, mean_s_w)
-        return vtoonfy_output_image, frame
+        vtoonfy_output_image = self.apply_vtoonify(frame, s_w)
+        return vtoonfy_output_image
 
     def encode_face_img(self, face_image):
         s_w = self.pspencoder(face_image)
@@ -215,6 +219,21 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         s_w = s_w.unsqueeze(0)
 
         return s_w
+
+    def generate_animation(self, encodings, FPS=25, duration_per_image=1):
+        encodings = [encoding.squeeze() for encoding in encodings]
+        animation_frames = []
+
+        for s_w in tqdm(interpolate(
+                latents_list=encodings, duration_list=[duration_per_image]*len(encodings),
+                interpolation_type="linear",
+                loop=False,
+                FPS=FPS,
+            ), desc='Generating morphing animation'):
+            animation_frame = self.s_w_to_stylized_image(s_w)
+            animation_frames.append(animation_frame)
+
+        return animation_frames
 
     def decodeFeaturesToImg(self, s_w):
         frame_tensor, _ = self.vtoonify.generator.generator([s_w], input_is_latent=True, randomize_noise=True)
@@ -304,10 +323,9 @@ if __name__ == '__main__':
         
         # Save paths
         sum_savename = os.path.join(args.output_path, basename + '_sum_' + args.backbone[0] + '.jpg')
-        vtoonify_save_path = os.path.join(args.output_path, basename + '_sum_vtoonify_' + args.backbone[0] + '.jpg')
 
         print('Processing ' + os.path.basename(filename) + ' with vtoonify_' + args.backbone[0])
-        vtoonfy_output_image, psp_encoded_image = vtoonify_handler.handle(
+        output_image = vtoonify_handler.handle(
             filename,
             args.scale_image,
             args.padding,
@@ -316,6 +334,4 @@ if __name__ == '__main__':
             args.skip_vtoonify,
         )
 
-        psp_encoded_image = cv2.imwrite(sum_savename, cv2.cvtColor(psp_encoded_image, cv2.COLOR_RGB2BGR))
-        if vtoonfy_output_image is not None:
-            cv2.imwrite(vtoonify_save_path, cv2.cvtColor(vtoonfy_output_image, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(sum_savename, cv2.cvtColor(output_image[-1], cv2.COLOR_RGB2BGR)) # save only last frame for test
