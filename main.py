@@ -37,6 +37,7 @@ class Arguments():
         self.parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
         self.parser.add_argument('--padding', type=int, nargs=4, default=[200, 200, 200, 200], help='left, right, top, bottom paddings to the face center')
         self.parser.add_argument('--skip_vtoonify', action='store_true', help='Skip VToonify Styling and create final image only with generator model')
+        self.parser.add_argument('--psp_style', type=int, nargs='*', help='Mix face and style after pSp encoding', default=[])
 
     def parse(self):
         self.opt = self.parser.parse_args()
@@ -126,6 +127,17 @@ def decodeFeaturesToImg(s_w, vtoonify):
     return frame
 
 
+def applyExstyle(s_w, exstyle, latent_mask):
+    if exstyle is None:
+        print('No exstyle, skipping pSp styling')
+        return s_w
+
+    for i in latent_mask:
+        s_w[:, i] = exstyle[:, i]
+
+    return s_w
+
+
 if __name__ == '__main__':
     parser = Arguments()
     args = parser.parse()
@@ -177,6 +189,7 @@ if __name__ == '__main__':
     # Constants and variables
     scale = 1
     kernel_1d = np.array([[0.125], [0.375], [0.375], [0.125]])
+    latent_mask = [10,11,12,13,14]
     embeddings_buffer = []
 
     Path(args.output_path).mkdir(parents=True, exist_ok=True)  # Creates the output folder in case it does not exists
@@ -191,6 +204,11 @@ if __name__ == '__main__':
 
             # Encode Image
             s_w = encode_face_img(device, frame, landmarkpredictor)
+
+            # Stylize pSp image
+            print('Stylizing image with pSp')
+            s_w = applyExstyle(s_w, exstyle, args.psp_style)
+
             embeddings_buffer.append(torch.squeeze(s_w))
             window_slide()
 
