@@ -59,7 +59,7 @@ async def main(args):
         repo_url = await (
             ecr_output
             .with_exec(["/bin/bash", "-c", "cd ecr && pulumi stack output repository_url -s "+pulumi_stack])
-        ).stdout().replace("\n","").replace("\r","")
+        ).stdout()
 
         # Get ECR token
         auth_token = await (
@@ -112,7 +112,7 @@ async def main(args):
 #         )
 
         compile_model = torchserve_container
-
+        repo_url = repo_url.replace("\n","").replace("\r","")
         print(f"repo_url: {repo_url}")
         print(f"repo_url.split('/')[0]: {repo_url.split('/')[0]}")
         print(f"auth_token['user_name']: {auth_token['user_name']}")
