@@ -116,6 +116,7 @@ async def main(args):
         print(f"repo_url: {repo_url}")
         print(f"repo_url.split('/')[0]: {repo_url.split('/')[0]}")
         print(f"auth_token['user_name']: {auth_token['user_name']}")
+        print((f"Publishing to {repo_url}:latest"))
 
         container_publication = await (
             compile_model
