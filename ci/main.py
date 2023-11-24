@@ -59,7 +59,7 @@ async def main(args):
         repo_url = await (
             ecr_output
             .with_exec(["/bin/bash", "-c", "cd ecr && pulumi stack output repository_url -s "+pulumi_stack])
-        ).stdout()
+        ).stdout().replace("\n","").replace("\r","")
 
         # Get ECR token
         auth_token = await (
