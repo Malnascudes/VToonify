@@ -96,6 +96,8 @@ docker build -t elface-torchserve-image . -f docker/Dockerfile
 
 This image will be used to both generate the `.mar` file and run the model.
 
+*NOTE*: This image takes more than 30 min to be built.
+
 ## Run TorchServe Image
 
 We will now run the docker image with the main code folder as a volume so the important files can be added to the `.mar` file.
