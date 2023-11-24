@@ -1,0 +1,52 @@
+name: CI (PR created/changed)
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      key:
+        description: "AWS Access Key Id."
+        required: true
+        default: ""
+      secret:
+        description: "AWS Access Key Secret."
+        required: true
+        default: ""
+      token:
+        description: "AWS Session Token."
+        required: true
+        default: ""
+      # region:
+      #   description: "AWS Region."
+      #   required: true
+      #   default: "eu-north-1"
+      environment:
+        description: "AWS environment"
+        required: true
+        default: "dev"
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          pulumi-access-token: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          aws-access-key-id: ${{ github.event.inputs.key }}
+          aws-secret-access-key: ${{ github.event.inputs.secret }}
+          aws-session-token: ${{ github.event.inputs.token }}
+          # aws-region: ${{ github.event.inputs.region }}
+          stack: ${{ github.event.inputs.environment }}
+
+
+      - name: Install deps
+        run: pip install .
+      - name: Install Dagger CLI
+        run: cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
+      - name: Run Dagger pipeline
+        run: dagger run python ci/main.py --pulumi_token $pulumi-access-token --aws_id $aws-access-key-id --aws_secret $aws-secret-access-key --aws_token $aws-session-token --stack $stack
