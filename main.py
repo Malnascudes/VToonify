@@ -35,6 +35,7 @@ class Arguments():
         self.parser.add_argument('--scale_image', action='store_true', help='resize and crop the image to best fit the model')
         self.parser.add_argument('--style_encoder_path', type=str, default='./checkpoint/encoder.pt', help='path of the style encoder')
         self.parser.add_argument('--exstyle_path', type=str, default=None, help='path of the extrinsic style code')
+        self.parser.add_argument('--style_image_path', type=str, default=None, help='path of the style image used instead of the exstyle path and style_id')
         self.parser.add_argument('--faceparsing_path', type=str, default='./checkpoint/faceparsing.pth', help='path of the face parsing model')
         self.parser.add_argument('--cpu', action='store_true', help='if true, only use cpu')
         self.parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
@@ -304,6 +305,7 @@ if __name__ == '__main__':
             'backbone': args.backbone,
             'exstyle': args.exstyle_path,
             'style_id': args.style_id,
+            'style_image_path': args.style_image_path,
         }
     }
     context = Context(model_dir=model_dir, model_name="vtoonify", manifest=manifest,batch_size=1,gpu=0,mms_version="1.0.0")
