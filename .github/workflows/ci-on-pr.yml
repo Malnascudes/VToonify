@@ -48,5 +48,5 @@ jobs:
       - name: Install Dagger CLI
         run: cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
       - name: Run Dagger pipeline
-        # run: dagger run python ci/main.py --pulumi_token $PULUMI_ACCESS_TOKEN --aws_id $AWS_ACCESS_KEY_ID --aws_secret $AWS_SECRET_ACCESS_KEY --aws_token $AWS_SESSION_TOKEN --stack $STACK
-        run: dagger run python ci/main.py
+        run: dagger run python ci/main.py --pulumi_token $INPUT_PULUMI_ACCESS_TOKEN --aws_id $INPUT_AWS_ACCESS_KEY_ID --aws_secret $INPUT_AWS_SECRET_ACCESS_KEY --aws_token $INPUT_AWS_SESSION_TOKEN --stack $INPUT_STACK
+        # run: dagger run python ci/main.py
