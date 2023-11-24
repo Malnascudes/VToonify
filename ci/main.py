@@ -10,11 +10,27 @@ async def main(args):
 
     async with dagger.Connection(config) as client:
         # Load Pulumi
-        pulumi_access_token = client.set_secret("PULUMI_ACCESS_TOKEN", args.pulumi_token)
+        if args.pulumi_token is None:
+            pulumi_access_token = client.set_secret("PULUMI_ACCESS_TOKEN", os.environ["PULUMI_ACCESS_TOKEN"])
+        else:
+            pulumi_access_token = client.set_secret("PULUMI_ACCESS_TOKEN", args.pulumi_token)
+
+        if args.aws_id is None:
+            aws_access_key_id = client.set_secret("AWS_ACCESS_KEY_ID", os.environ["AWS_ACCESS_KEY_ID"])
+        else:
+            aws_access_key_id = client.set_secret("AWS_ACCESS_KEY_ID", args.aws_id)
+
+        if args.aws_secret is None:
+            aws_secret_access_key = client.set_secret("AWS_SECRET_ACCESS_KEY", os.environ["AWS_SECRET_ACCESS_KEY"])
+        else:
+            aws_secret_access_key = client.set_secret("AWS_SECRET_ACCESS_KEY", args.aws_secret)
+
+        if args.aws_token is None:
+            aws_session_token = client.set_secret("AWS_SESSION_TOKEN", os.environ["AWS_SESSION_TOKEN"])
+        else:
+            aws_session_token = client.set_secret("AWS_SESSION_TOKEN", args.aws_token)
+
         pulumi_stack = args.stack
-        aws_access_key_id = client.set_secret("AWS_ACCESS_KEY_ID", args.aws_id)
-        aws_secret_access_key = client.set_secret("AWS_SECRET_ACCESS_KEY", args.aws_secret)
-        aws_session_token = client.set_secret("AWS_SESSION_TOKEN", args.aws_token)
 
         pulumi_container = (
             client.container()
@@ -123,11 +139,21 @@ async def main(args):
         # )
 
 argParser = argparse.ArgumentParser()
-argParser.add_argument("--pulumi_token", default=os.environ["PULUMI_ACCESS_TOKEN"], help="PULUMI_ACCESS_TOKEN")
-argParser.add_argument("--aws_id", default=os.environ["AWS_ACCESS_KEY_ID"], help="AWS_ACCESS_KEY_ID")
-argParser.add_argument("--aws_secret", default=os.environ["AWS_SECRET_ACCESS_KEY"], help="AWS_SECRET_ACCESS_KEY")
-argParser.add_argument("--aws_token", default=os.environ["AWS_SESSION_TOKEN"], help="AWS_SESSION_TOKEN")
-argParser.add_argument("--stack", default="dev", help="Pulumi stack")
+argParser.add_argument("--pulumi_token",
+                       # default=os.environ["PULUMI_ACCESS_TOKEN"],
+                       help="PULUMI_ACCESS_TOKEN")
+argParser.add_argument("--aws_id",
+                       # default=os.environ["AWS_ACCESS_KEY_ID"],
+                       help="AWS_ACCESS_KEY_ID")
+argParser.add_argument("--aws_secret",
+                       # default=os.environ["AWS_SECRET_ACCESS_KEY"],
+                       help="AWS_SECRET_ACCESS_KEY")
+argParser.add_argument("--aws_token",
+                       # default=os.environ["AWS_SESSION_TOKEN"],
+                       help="AWS_SESSION_TOKEN")
+argParser.add_argument("--stack",
+                       default="dev",
+                       help="Pulumi stack")
 
 args = argParser.parse_args()
 anyio.run(main, args)

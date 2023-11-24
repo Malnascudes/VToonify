@@ -45,7 +45,7 @@ jobs:
 
 
       - name: Install deps
-        run: pip install --upgrade pip && pip install dagger-io sys os json argparse random datetime
+        run: pip install --upgrade pip && pip install dagger-io
       - name: Install Dagger CLI
         run: cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
       - name: Run Dagger pipeline
