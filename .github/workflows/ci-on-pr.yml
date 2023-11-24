@@ -36,17 +36,16 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          pulumi_access_token: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-          aws_access_key_id: ${{ github.event.inputs.key }}
-          aws_secret_access_key: ${{ github.event.inputs.secret }}
-          aws_session_token: ${{ github.event.inputs.token }}
+          # pulumi_access_token: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          # aws_access_key_id: ${{ github.event.inputs.key }}
+          # aws_secret_access_key: ${{ github.event.inputs.secret }}
+          # aws_session_token: ${{ github.event.inputs.token }}
           # aws_region: ${{ github.event.inputs.region }}
-          stack: ${{ github.event.inputs.environment }}
+          # stack: ${{ github.event.inputs.environment }}
 
       - name: Install deps
         run: pip install --upgrade pip && pip install dagger-io
       - name: Install Dagger CLI
         run: cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
       - name: Run Dagger pipeline
-        # run: dagger run python ci/main.py --pulumi_token $INPUT_PULUMI_ACCESS_TOKEN --aws_id $INPUT_AWS_ACCESS_KEY_ID --aws_secret $INPUT_AWS_SECRET_ACCESS_KEY --aws_token $INPUT_AWS_SESSION_TOKEN --stack $INPUT_STACK
         run: dagger run python ci/main.py --pulumi_token ${{ secrets.PULUMI_ACCESS_TOKEN }} --aws_id ${{ github.event.inputs.key }} --aws_secret ${{ github.event.inputs.secret }} --aws_token ${{ github.event.inputs.token }} --stack ${{ github.event.inputs.environment }}
