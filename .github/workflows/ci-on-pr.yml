@@ -43,10 +43,9 @@ jobs:
           # aws_region: ${{ github.event.inputs.region }}
           stack: ${{ github.event.inputs.environment }}
 
-
       - name: Install deps
         run: pip install --upgrade pip && pip install dagger-io
       - name: Install Dagger CLI
         run: cd /usr/local && { curl -L https://dl.dagger.io/dagger/install.sh | sh; cd -; }
       - name: Run Dagger pipeline
-        run: dagger run python ci/main.py --pulumi_token $pulumi_access_token --aws_id $aws_access_key_id --aws_secret $aws_secret_access_key --aws_token $aws_session_token --stack $stack
+        run: dagger run python ci/main.py --pulumi_token $PULUMI_ACCESS_TOKEN --aws_id $AWS_ACCESS_KEY_ID --aws_secret $AWS_SECRET_ACCESS_KEY --aws_token $AWS_SESSION_TOKEN --stack $STACK
