@@ -17,6 +17,8 @@ USER model-server
 # maybe necessary to access nvcc
 # RUN usermod -a -G video model-server
 
+WORKDIR /src/crypsis-delizziosa-model/
+
 # Install python dependencies
 ADD requirements.txt requirements.txt
 RUN pip install -r requirements.txt
