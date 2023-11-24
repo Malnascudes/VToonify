@@ -7,6 +7,7 @@ USER root
 # Install nvcc needed to compile custom VToonify cuda libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
+    unzip \
     cuda-nvcc-12-1 \
     libcusparse-dev-12-1 \
     libcublas-dev-12-1 \

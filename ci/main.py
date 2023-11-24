@@ -96,20 +96,20 @@ async def main(args):
 
         torchserve_container = (
             torchserve_img_dir
-            # .with_workdir("/src/crypsis-delizziosa-model/")
+            .with_workdir("/src/crypsis-delizziosa-model/")
             .docker_build(dockerfile="docker/Dockerfile", platform=dagger.Platform("linux/amd64"))
         )
 
         # Compile the model to .mar file
-        # compile_model = await (
-#             torchserve_container
-#             .with_exec(["/bin/bash", "-c", "torch-model-archiver --model-name vToonify --version 1.0 \
-# --serialized-file ./checkpoint/arcane/vtoonify_s_d.pt \
-# --model-file ./model/vtoonify.py \
-# --handler ./main \
-# --export-path /home/model-server/model_store \
-# --extra-files ./util.py,./model/vtoonify.py,./model/dualstylegan.py,./model/stylegan/stylegan_model.py,./model/stylegan/op/__init__.py,./model/stylegan/op/upfirdn2d_pkg.py,./model/stylegan/op/fused_act.py,./model/encoder/align_all_parallel.py,./model/bisenet/bisnet_model.py,./model/bisenet/resnet.py,./model/stylegan/op/upfirdn2d_kernel.cu,./model/stylegan/op/fused_bias_act.cpp,./model/stylegan/op/fused_bias_act_kernel.cu,./model/stylegan/op/upfirdn2d.cpp,./model/stylegan/op/conv2d_gradfix.py,./model/encoder/encoders/psp_encoders.py,./model/encoder/encoders/helpers.py,./checkpoint/arcane/vtoonify_s_d.pt,./checkpoint/faceparsing.pth,./checkpoint/encoder.pt,./checkpoint/arcane/exstyle_code.npy,./checkpoint/shape_predictor_68_face_landmarks.dat"])
-#         )
+        compile_model = await (
+            torchserve_container
+            .with_exec(["/bin/bash", "-c", "torch-model-archiver --model-name vToonify --version 1.0 \
+--serialized-file ./checkpoint/arcane/vtoonify_s_d.pt \
+--model-file ./model/vtoonify.py \
+--handler ./main \
+--export-path /home/model-server/model_store \
+--extra-files ./util.py,./model/vtoonify.py,./model/dualstylegan.py,./model/stylegan/stylegan_model.py,./model/stylegan/op/__init__.py,./model/stylegan/op/upfirdn2d_pkg.py,./model/stylegan/op/fused_act.py,./model/encoder/align_all_parallel.py,./model/bisenet/bisnet_model.py,./model/bisenet/resnet.py,./model/stylegan/op/upfirdn2d_kernel.cu,./model/stylegan/op/fused_bias_act.cpp,./model/stylegan/op/fused_bias_act_kernel.cu,./model/stylegan/op/upfirdn2d.cpp,./model/stylegan/op/conv2d_gradfix.py,./model/encoder/encoders/psp_encoders.py,./model/encoder/encoders/helpers.py,./checkpoint/arcane/vtoonify_s_d.pt,./checkpoint/faceparsing.pth,./checkpoint/encoder.pt,./checkpoint/arcane/exstyle_code.npy,./checkpoint/shape_predictor_68_face_landmarks.dat"])
+        )
 
         compile_model = torchserve_container
         repo_url = repo_url.replace("\n","").replace("\r","")
@@ -141,16 +141,12 @@ async def main(args):
 
 argParser = argparse.ArgumentParser()
 argParser.add_argument("--pulumi_token",
-                       # default=os.environ["PULUMI_ACCESS_TOKEN"],
                        help="PULUMI_ACCESS_TOKEN")
 argParser.add_argument("--aws_id",
-                       # default=os.environ["AWS_ACCESS_KEY_ID"],
                        help="AWS_ACCESS_KEY_ID")
 argParser.add_argument("--aws_secret",
-                       # default=os.environ["AWS_SECRET_ACCESS_KEY"],
                        help="AWS_SECRET_ACCESS_KEY")
 argParser.add_argument("--aws_token",
-                       # default=os.environ["AWS_SESSION_TOKEN"],
                        help="AWS_SESSION_TOKEN")
 argParser.add_argument("--stack",
                        default="dev",
