@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # mkdir checkpoint
 # cd checkpoint
 # Download checkpoints
