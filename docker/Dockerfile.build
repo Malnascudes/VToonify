@@ -26,6 +26,9 @@ RUN pip install --upgrade pip
 ADD requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
+# Adding config file needed for both running and compiling the model
+ADD config.properties config.properties
+
 FROM torchserve-env AS builder
 
 # Download the checkpoints
@@ -35,7 +38,6 @@ RUN ./download_checkpoints.sh
 # Add required code
 ADD model/ model/
 ADD *.py .
-ADD config.properties config.properties
 
 # Create output folder for the .mar
 RUN mkdir model_store

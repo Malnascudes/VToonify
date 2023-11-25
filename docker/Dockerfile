@@ -26,6 +26,9 @@ RUN pip install --upgrade pip
 ADD requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
+# Adding config file needed for both running and compiling the model
+ADD config.properties config.properties
+
 # Download the checkpoints
 ADD scripts/download_checkpoints.sh download_checkpoints.sh
 RUN ./download_checkpoints.sh
