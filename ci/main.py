@@ -100,7 +100,7 @@ async def main(args):
         )
 
         # Compile the model to .mar file
-        compile_model = (
+        compiled_model = (
             torchserve_container
             .with_directory(".", client.host().directory("."),
                 exclude=["scripts",
@@ -111,8 +111,7 @@ async def main(args):
                          "ci/",
                          "output/",
                          "output_test/"])
-            .with_exec(["/bin/bash", "-c", "pwd && ls -la"])
-            # .with_exec(["/bin/bash", "-c", "torch-model-archiver --model-name vToonify --version 1.0 --serialized-file checkpoint/arcane/vtoonify_s_d.pt --model-file model/vtoonify.py --handler main --export-path model_store --extra-files util.py,model/vtoonify.py,model/dualstylegan.py,model/stylegan/stylegan_model.py,model/stylegan/op/__init__.py,model/stylegan/op/upfirdn2d_pkg.py,model/stylegan/op/fused_act.py,model/encoder/align_all_parallel.py,model/bisenet/bisnet_model.py,model/bisenet/resnet.py,model/stylegan/op/upfirdn2d_kernel.cu,model/stylegan/op/fused_bias_act.cpp,model/stylegan/op/fused_bias_act_kernel.cu,model/stylegan/op/upfirdn2d.cpp,model/stylegan/op/conv2d_gradfix.py,model/encoder/encoders/psp_encoders.py,model/encoder/encoders/helpers.py,checkpoint/arcane/vtoonify_s_d.pt,checkpoint/faceparsing.pth,checkpoint/encoder.pt,checkpoint/arcane/exstyle_code.npy,checkpoint/shape_predictor_68_face_landmarks.dat"])
+            .with_exec(["/bin/bash", "-c", "mkdir model_store && torch-model-archiver --model-name vToonify --version 1.0 --serialized-file checkpoint/arcane/vtoonify_s_d.pt --model-file model/vtoonify.py --handler main --export-path model_store --extra-files util.py,model/vtoonify.py,model/dualstylegan.py,model/stylegan/stylegan_model.py,model/stylegan/op/__init__.py,model/stylegan/op/upfirdn2d_pkg.py,model/stylegan/op/fused_act.py,model/encoder/align_all_parallel.py,model/bisenet/bisnet_model.py,model/bisenet/resnet.py,model/stylegan/op/upfirdn2d_kernel.cu,model/stylegan/op/fused_bias_act.cpp,model/stylegan/op/fused_bias_act_kernel.cu,model/stylegan/op/upfirdn2d.cpp,model/stylegan/op/conv2d_gradfix.py,model/encoder/encoders/psp_encoders.py,model/encoder/encoders/helpers.py,checkpoint/arcane/vtoonify_s_d.pt,checkpoint/faceparsing.pth,checkpoint/encoder.pt,checkpoint/arcane/exstyle_code.npy,checkpoint/shape_predictor_68_face_landmarks.dat"]).directory("./model_store")
         )
 
         repo_url = repo_url.replace("\n","").replace("\r","")
@@ -122,15 +121,8 @@ async def main(args):
         print((f"Publishing to {repo_url}:latest"))
 
         container_publication = await (
-            compile_model
-            # .with_default_args(args=[
-            #     "torchserve",
-            #     "--start",
-            #     "--model-store=model_store",
-            #     "--models",
-            #     "vToonify=vToonify.mar",
-            #     "--ts-config",
-            #     "config.properties"])
+            torchserve_container
+            .with_directory("model_store", compiled_model)
             .with_registry_auth(repo_url.split("/")[0], auth_token["user_name"], password)
             .publish(f"{repo_url}:latest")
         )
