@@ -97,7 +97,7 @@ async def main(args):
         torchserve_container = (
             torchserve_img_dir
             .docker_build(dockerfile="docker/Dockerfile", platform=dagger.Platform("linux/amd64"))
-            .with_workdir("/src/crypsis-delizziosa-model/")
+            # .with_workdir("/src/crypsis-delizziosa-model/")
         )
 
         # Compile the model to .mar file
