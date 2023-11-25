@@ -22,6 +22,7 @@ USER model-server
 WORKDIR /src/crypsis-delizziosa-model/
 
 # Install python dependencies
+RUN pip install --upgrade pip
 ADD requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
