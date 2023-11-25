@@ -103,8 +103,8 @@ async def main(args):
         compiled_model = (
             torchserve_container
             .with_directory(".", client.host().directory("."),
-                exclude=["scripts",
-                         "checkpoint/",
+                exclude=["scripts/",
+                         # "checkpoint/",
                          "model_store/",
                          "data/",
                          "output/",
