@@ -1,5 +1,3 @@
-./checkpoint
-./model_store
 ./data
 ./output
 ./ci
