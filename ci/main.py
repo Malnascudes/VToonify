@@ -134,14 +134,11 @@ async def main(args):
         )
 
         repo_url = repo_url.replace("\n","").replace("\r","")
-        # print(f"repo_url: {repo_url}")
-        # print(f"repo_url.split('/')[0]: {repo_url.split('/')[0]}")
-        # print(f"auth_token['user_name']: {auth_token['user_name']}")
-        # print((f"Publishing to {repo_url}:latest"))
 
         container_publication = await (
             torchserve_container
             # .with_directory("model_store", compiled_model)
+            # .with_default_args(["torchserve","--start","--model-store=/home/model-server/crypsis-delizziosa-model/model_store","--models","vToonify=vToonify.mar","--ts-config","/home/model-server/crypsis-delizziosa-model/config.properties"])
             .with_registry_auth(repo_url.split("/")[0], auth_token["user_name"], password)
             .publish(f"{repo_url}:latest")
         )
