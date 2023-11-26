@@ -29,8 +29,7 @@ ADD config.properties config.properties
 
 FROM torchserve-env AS builder
 
-USER model-server
-WORKDIR crypsis-delizziosa-model/
+USER 0
 
 # Add the checkpoints
 ADD checkpoint/ checkpoint/
@@ -40,7 +39,7 @@ ADD model/ model/
 ADD *.py ./
 
 # Create output folder for the .mar
-RUN mkdir model_store
+RUN mkdir ./model_store
 
 # Compile the model
 RUN torch-model-archiver --model-name vToonify --version 1.0 \
@@ -52,8 +51,4 @@ RUN torch-model-archiver --model-name vToonify --version 1.0 \
 
 FROM torchserve-env
 
-USER model-server
-WORKDIR crypsis-delizziosa-model/
-
-COPY --from=builder model_store/ model_store/
-# COPY --from=builder config.properties config.properties
+COPY model_store/ model_store/

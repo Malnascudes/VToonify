@@ -74,45 +74,63 @@ async def main(args):
 
         # Compiling the model for torchserve
 
-        torchserve_img_dir = (
+        # torchserve_img_dir = (
+        #     client.host()
+        #     .directory(".",
+        #                exclude=[
+        #                    "checkpoint/",
+        #                    "model_store/",
+        #                    "data/",
+        #                    "output/",
+        #                    "ci/",
+        #                    "output/",
+        #                    "output_test/"
+        #                ],
+        #                # include=[
+        #                #     # "scripts/",
+        #                #     "model/",
+        #                #     "*py"
+        #                # ]
+        #                )
+        # )
+
+        # torchserve_container = (
+        #     torchserve_img_dir
+        #     .docker_build(dockerfile="docker/Dockerfile", platform=dagger.Platform("linux/amd64"))
+        #     .with_exec(["/bin/bash", "-c", "ls -la && ./scripts/download_checkpoints.sh"])
+        # )
+
+        # Compile the model to .mar file
+        # compiled_model = (
+        #     torchserve_container
+        #     .with_directory(".", client.host().directory("."),
+        #         exclude=["scripts/",
+        #                  # "checkpoint/",
+        #                  "model_store/",
+        #                  "data/",
+        #                  "output/",
+        #                  "ci/",
+        #                  "output/",
+        #                  "output_test/"]
+        #                     )
+        #     .with_exec(["ls","-la","&&","pwd","&&","ls","-la","checkpoint/","&&","mkdir","model_store","&&","torch-model-archiver","--model-name","vToonify","--version","1.0","--serialized-file","checkpoint/arcane/vtoonify_s_d.pt","--model-file","model/vtoonify.py","--handler","main","--export-path","model_store","--extra-files","util.py,model/vtoonify.py,model/dualstylegan.py,model/stylegan/stylegan_model.py,model/stylegan/op/__init__.py,model/stylegan/op/upfirdn2d_pkg.py,model/stylegan/op/fused_act.py,model/encoder/align_all_parallel.py,model/bisenet/bisnet_model.py,model/bisenet/resnet.py,model/stylegan/op/upfirdn2d_kernel.cu,model/stylegan/op/fused_bias_act.cpp,model/stylegan/op/fused_bias_act_kernel.cu,model/stylegan/op/upfirdn2d.cpp,model/stylegan/op/conv2d_gradfix.py,model/encoder/encoders/psp_encoders.py,model/encoder/encoders/helpers.py,checkpoint/arcane/vtoonify_s_d.pt,checkpoint/faceparsing.pth,checkpoint/encoder.pt,checkpoint/arcane/exstyle_code.npy,checkpoint/shape_predictor_68_face_landmarks.dat"], insecure_root_capabilities=True).directory("model_store")
+        # )
+
+        torchserve_container = (
             client.host()
             .directory(".",
                        exclude=[
-                           "checkpoint/",
-                           "model_store/",
+                           # "checkpoint/",
+                           # "model_store/",
                            "data/",
                            "output/",
                            "ci/",
                            "output/",
                            "output_test/"
-                       ],
-                       # include=[
-                       #     # "scripts/",
-                       #     "model/",
-                       #     "*py"
-                       # ]
+                       ]
                        )
-        )
-
-        torchserve_container = (
-            torchserve_img_dir
-            .docker_build(dockerfile="docker/Dockerfile", platform=dagger.Platform("linux/amd64"))
-        )
-
-        # Compile the model to .mar file
-        compiled_model = (
-            torchserve_container
-            .with_directory(".", client.host().directory("."),
-                exclude=["scripts/",
-                         # "checkpoint/",
-                         "model_store/",
-                         "data/",
-                         "output/",
-                         "ci/",
-                         "output/",
-                         "output_test/"]
-                            )
-            .with_exec(["ls","-la","&&","pwd","&&","ls","-la","checkpoint/","&&","mkdir","model_store","&&","torch-model-archiver","--model-name","vToonify","--version","1.0","--serialized-file","checkpoint/arcane/vtoonify_s_d.pt","--model-file","model/vtoonify.py","--handler","main","--export-path","model_store","--extra-files","util.py,model/vtoonify.py,model/dualstylegan.py,model/stylegan/stylegan_model.py,model/stylegan/op/__init__.py,model/stylegan/op/upfirdn2d_pkg.py,model/stylegan/op/fused_act.py,model/encoder/align_all_parallel.py,model/bisenet/bisnet_model.py,model/bisenet/resnet.py,model/stylegan/op/upfirdn2d_kernel.cu,model/stylegan/op/fused_bias_act.cpp,model/stylegan/op/fused_bias_act_kernel.cu,model/stylegan/op/upfirdn2d.cpp,model/stylegan/op/conv2d_gradfix.py,model/encoder/encoders/psp_encoders.py,model/encoder/encoders/helpers.py,checkpoint/arcane/vtoonify_s_d.pt,checkpoint/faceparsing.pth,checkpoint/encoder.pt,checkpoint/arcane/exstyle_code.npy,checkpoint/shape_predictor_68_face_landmarks.dat"], insecure_root_capabilities=True).directory("model_store")
+            .docker_build(dockerfile="docker/Dockerfile.build", platform=dagger.Platform("linux/amd64"))
+            # .with_exec(["/bin/bash", "-c", "ls -la && ./scripts/download_checkpoints.sh"])
         )
 
         repo_url = repo_url.replace("\n","").replace("\r","")
@@ -123,7 +141,7 @@ async def main(args):
 
         container_publication = await (
             torchserve_container
-            .with_directory("model_store", compiled_model)
+            # .with_directory("model_store", compiled_model)
             .with_registry_auth(repo_url.split("/")[0], auth_token["user_name"], password)
             .publish(f"{repo_url}:latest")
         )
