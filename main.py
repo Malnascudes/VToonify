@@ -171,18 +171,18 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         # Load image
         image_bytes = base64.b64decode(bytes(input_item['input_image'], encoding="utf8"))
         # Get arguments
-        FPS = input_item.get('FPS', self.default_FPS)
-        duration_per_image = input_item.get('duration_per_image', self.default_duration_per_image)
-        scale_image = input_item.get('scale_image', self.default_scale_image)
-        latent_mask = input_item.get('latent_mask', self.default_latent_mask)
+        self.FPS = input_item.get('FPS', self.default_FPS)
+        self.duration_per_image = input_item.get('duration_per_image', self.default_duration_per_image)
+        self.scale_image = input_item.get('scale_image', self.default_scale_image)
+        self.latent_mask = input_item.get('latent_mask', self.default_latent_mask)
         self.style_degree = input_item.get('style_degree', self.default_style_degree)
         self.skip_vtoonify = input_item.get('skip_vtoonify', self.default_skip_vtoonify)
 
         print(f"Handling image with parametters:")
-        print(f"\tFPS: {FPS}")
-        print(f"\tduration_per_image: {duration_per_image}")
-        print(f"\tscale_image: {scale_image}")
-        print(f"\tlatent_mask: {latent_mask}")
+        print(f"\tFPS: {self.FPS}")
+        print(f"\tduration_per_image: {self.duration_per_image}")
+        print(f"\tscale_image: {self.scale_image}")
+        print(f"\tlatent_mask: {self.latent_mask}")
         print(f"\tstyle_degree: {self.style_degree}")
         print(f"\tskip_vtoonify: {self.skip_vtoonify}")
 
@@ -191,14 +191,14 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Preprocess Image
         with torch.no_grad():
-            model_input = self.pre_processingImage(frame, scale_image)
+            model_input = self.pre_processingImage(frame, self.scale_image)
 
             # Encode Image
             s_w = self.encode_face_img(model_input)
 
             # Stylize pSp image
             print('Stylizing image with pSp')
-            s_w = self.applyExstyle(s_w, self.exstyle, latent_mask)
+            s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
 
             self.embeddings_buffer.append(torch.squeeze(s_w))
             self.window_slide()
@@ -207,8 +207,8 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
             animation_frames = self.generate_animation(
                 [self.embeddings_buffer[-1], mean_s_w],
-                FPS=FPS,
-                duration_per_image=duration_per_image,
+                FPS=self.FPS,
+                duration_per_image=self.duration_per_image,
             )
             model_output = animation_frames
 
@@ -219,7 +219,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # We detect the face in the image, and resize the image so that the eye distance is 64 pixels.
         # Centered on the eyes, we crop the image to almost 400x400 (based on args.padding).
-        if scale_image:
+        if self.scale_image:
             paras = get_video_crop_parameter(frame, self.landmarkpredictor, self.padding)
             if paras is not None:
                 h, w, top, bottom, left, right, scale = paras
