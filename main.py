@@ -191,7 +191,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Preprocess Image
         with torch.no_grad():
-            model_input = self.pre_processingImage(frame, self.scale_image)
+            model_input = self.pre_processingImage(frame)
 
             # Encode Image
             s_w = self.encode_face_img(model_input)
@@ -214,7 +214,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         return self.postprocess(model_output)
 
-    def pre_processingImage(self, frame, scale_image):
+    def pre_processingImage(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         # We detect the face in the image, and resize the image so that the eye distance is 64 pixels.
