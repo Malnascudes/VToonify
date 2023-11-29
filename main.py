@@ -77,7 +77,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         ])
         self.embeddings_buffer = []
         self.vtoonify_input_image_size = (256,256)
-        self.SLIDING_WINDOW_SIZE = 2
+        self.default_sliding_window_size = 100
         self.padding = [200, 200, 200, 200]
         self.kernel_1d = np.array([[0.125], [0.375], [0.375], [0.125]])
         self.default_FPS = 25
@@ -125,6 +125,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             style_encoder_path = self.manifest['models']['style_encoder']
             exstyle_path = self.manifest['models']['exstyle']
 
+        self.sliding_window_size = self.default_sliding_window_size
         self.FPS = self.default_FPS
         self.duration_per_image = self.default_duration_per_image
         self.scale_image = self.default_scale_image
@@ -171,6 +172,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         # Load image
         image_bytes = base64.b64decode(bytes(input_item['input_image'], encoding="utf8"))
         # Get arguments
+        self.sliding_window_size = input_item.get('sliding_window_size', self.default_sliding_window_size)
         self.FPS = input_item.get('FPS', self.default_FPS)
         self.duration_per_image = input_item.get('duration_per_image', self.default_duration_per_image)
         self.scale_image = input_item.get('scale_image', self.default_scale_image)
@@ -179,6 +181,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.skip_vtoonify = input_item.get('skip_vtoonify', self.default_skip_vtoonify)
 
         print(f"Handling image with parametters:")
+        print(f"\tsliding_window_size: {self.sliding_window_size}")
         print(f"\tFPS: {self.FPS}")
         print(f"\tduration_per_image: {self.duration_per_image}")
         print(f"\tscale_image: {self.scale_image}")
@@ -267,7 +270,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         return s_w
 
     def window_slide(self):
-        if len(self.embeddings_buffer) > self.SLIDING_WINDOW_SIZE:
+        if len(self.embeddings_buffer) > self.sliding_window_size:
             self.embeddings_buffer.pop(0)
 
     def pSpFeaturesBufferMean(self):
@@ -409,7 +412,7 @@ if __name__ == '__main__':
 
         model_response = vtoonify_handler.handle([{'body':{
             "input_image": base64.b64encode(input_image).decode('utf-8'),
-            "FPS": 30,
+            "FPS": 2,
             "duration_per_image": 2,
             "scale_image": args.scale_image,
             "latent_mask": args.psp_style,
