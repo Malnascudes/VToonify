@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import cv2
+from remove_background import remove_background
 import torch
 import dlib
 import numpy as np
@@ -234,6 +235,8 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         frame = align_face(frame, self.landmarkpredictor)
         frame = self.transform(frame).unsqueeze(dim=0).to(self.device)
+        if self.set_background:
+            frame = remove_background(frame, white_background=self.set_background=="WHITE")
 
         return frame
 
