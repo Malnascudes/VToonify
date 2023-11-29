@@ -125,6 +125,10 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             style_encoder_path = self.manifest['models']['style_encoder']
             exstyle_path = self.manifest['models']['exstyle']
 
+        self.FPS = self.default_FPS
+        self.duration_per_image = self.default_duration_per_image
+        self.scale_image = self.default_scale_image
+        self.latent_mask = self.default_latent_mask
         self.style_degree = self.default_style_degree
         self.skip_vtoonify = self.default_skip_vtoonify
 
