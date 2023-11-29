@@ -201,6 +201,11 @@ def tensor2np_uint8(tensor_obj):
     # change dimension of a tensor object into a numpy array
     return ((tensor_obj[0].cpu().numpy().transpose(1, 2, 0) + 1.0) * 127.5).astype(np.uint8)
 
+def np2tensor(np_obj):
+     # change dimenion of tensor into np array
+    scaled_np_array = np_obj/127.5 - 1
+    return torch.Tensor(scaled_np_array.transpose((2, 0, 1))).unsqueeze(0)
+
 # get parameters from the stylegan and mark them with their layers
 def gather_params(G):
     params = dict(
