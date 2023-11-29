@@ -24,9 +24,6 @@ RUN pip install --upgrade pip
 ADD requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
-# Adding config file needed for both running and compiling the model
-ADD config.properties config.properties
-
 FROM torchserve-env AS builder
 
 USER 0
@@ -51,6 +48,10 @@ RUN torch-model-archiver --model-name vToonify --version 1.0 \
 
 FROM torchserve-env
 
+# Adding config file
+ADD config.properties config.properties
+
+# Addin compile model from previous step
 COPY --from=builder /home/model-server/crypsis-delizziosa-model/model_store/ model_store/
 
 CMD ["torchserve","--start","--model-store=/home/model-server/crypsis-delizziosa-model/model_store","--models","vToonify=vToonify.mar","--ts-config","/home/model-server/crypsis-delizziosa-model/config.properties"]
