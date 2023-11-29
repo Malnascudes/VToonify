@@ -52,6 +52,9 @@ def setup_parser():
     parser.add_argument('--padding', type=int, nargs=4, default=[200, 200, 200, 200], help='left, right, top, bottom paddings to the face center')
     parser.add_argument('--skip_vtoonify', action='store_true', help='Skip VToonify Styling and create final image only with generator model')
     parser.add_argument('--psp_style', type=int, nargs='*', help='Mix face and style after pSp encoding', default=[])
+    parser.add_argument('--set_background', type=str, default=None,
+                        help='Set the image background to "BLACK" or "WHITE". Default is None to leave original background. Options other than "BLACK" or "WHITE" fallback to "BLACK"' 
+    )
 
     return parser
 
@@ -86,6 +89,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.default_latent_mask = []
         self.default_style_degree = 0.1
         self.default_skip_vtoonify = True
+        self.default_set_background = None
 
     def initialize(self, context):
         """
@@ -173,6 +177,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         latent_mask = input_item.get('latent_mask', self.default_latent_mask)
         self.style_degree = input_item.get('style_degree', self.default_style_degree)
         self.skip_vtoonify = input_item.get('skip_vtoonify', self.default_skip_vtoonify)
+        self.set_background = input_item.get('set_background', self.default_set_background)
 
         print(f"Handling image with parametters:")
         print(f"\tFPS: {FPS}")
@@ -181,6 +186,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         print(f"\tlatent_mask: {latent_mask}")
         print(f"\tstyle_degree: {self.style_degree}")
         print(f"\tskip_vtoonify: {self.skip_vtoonify}")
+        print(f"\tset_background: {self.set_background}")
 
         image_array = np.frombuffer(image_bytes, np.uint8)
         frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
@@ -411,6 +417,7 @@ if __name__ == '__main__':
             "latent_mask": args.psp_style,
             "style_degree": args.style_degree,
             "skip_vtoonify": args.skip_vtoonify,
+            "set_background": args.set_background,
             }},
         ], context)
 
