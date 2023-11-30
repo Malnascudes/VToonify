@@ -137,6 +137,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.latent_mask = self.default_latent_mask
         self.style_degree = self.default_style_degree
         self.skip_vtoonify = self.default_skip_vtoonify
+        self.set_background = self.default_set_background
 
         self.vtoonify = VToonify(backbone=self.backbone)
         self.vtoonify.load_state_dict(torch.load(vtoonify_path, map_location=lambda storage, loc: storage)['g_ema'])
