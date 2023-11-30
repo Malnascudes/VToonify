@@ -30,11 +30,6 @@ import base64
 
 def setup_parser():
     parser = argparse.ArgumentParser(description='Style Transfer')
-    
-    # Add arguments to the parser
-    parser.add_argument('--content', type=str, default='./data', help='path of the folder with the content image/video')
-    # ... (add the rest of the arguments in a similar way)
-
 
     parser = argparse.ArgumentParser(description='Style Transfer')
     parser.add_argument('--content', type=str, default='./data', help='path of the folder with the content image/video')
@@ -46,6 +41,7 @@ def setup_parser():
     parser.add_argument('--scale_image', action='store_true', help='resize and crop the image to best fit the model')
     parser.add_argument('--style_encoder_path', type=str, default='./checkpoint/encoder.pt', help='path of the style encoder')
     parser.add_argument('--exstyle_path', type=str, default=None, help='path of the extrinsic style code')
+    parser.add_argument('--style_image_path', type=str, default=None, help='path of the style image used instead of the exstyle path and style_id')
     parser.add_argument('--faceparsing_path', type=str, default='./checkpoint/faceparsing.pth', help='path of the face parsing model')
     parser.add_argument('--cpu', action='store_true', help='if true, only use cpu')
     parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
@@ -157,12 +153,19 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Load External Styles
         if self.backbone == 'dualstylegan':
-            self.style_id = -1
-            self.exstyles = np.load(exstyle_path, allow_pickle='TRUE').item()
-            stylename = list(self.exstyles.keys())[self.style_id]
-            self.exstyle = torch.tensor(self.exstyles[stylename]).to(self.device)
-            with torch.no_grad():
-                self.exstyle = self.vtoonify.zplus2wplus(self.exstyle)
+            exstyle_image_path = self.manifest['models']['style_image_path']
+            if exstyle_image_path:
+                print(f'Loading Style image from {exstyle_image_path}')
+                exstyle_image = cv2.imread(exstyle_image_path)
+                with torch.no_grad():
+                    exstyle_image = self.pre_processingImage(exstyle_image, False, [200,200,200,200])
+                    self.exstyle = self.encode_face_img(exstyle_image).to(self.device)
+            else:
+                self.exstyles = np.load(self.manifest['models']['exstyle'], allow_pickle='TRUE').item()
+                stylename = list(self.exstyles.keys())[self.manifest['models']['style_id']]
+                self.exstyle = torch.tensor(self.exstyles[stylename]).to(self.device)
+                with torch.no_grad():
+                    self.exstyle = self.vtoonify.zplus2wplus(self.exstyle)  
 
 
         self.initialized = True
@@ -390,6 +393,7 @@ if __name__ == '__main__':
             'backbone': args.backbone,
             'exstyle': args.exstyle_path,
             'style_id': args.style_id,
+            'style_image_path': args.style_image_path,
         }
     }
     context = Context(model_dir=model_dir, model_name="vtoonify", manifest=manifest,batch_size=1,gpu=0,mms_version="1.0.0")
