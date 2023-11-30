@@ -82,6 +82,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.default_latent_mask = []
         self.default_style_degree = 0.1
         self.default_skip_vtoonify = True
+        self.default_style_index = 0
 
     def initialize(self, context):
         """
@@ -188,6 +189,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         self.scale_image = input_item.get('scale_image', self.default_scale_image)
         self.latent_mask = input_item.get('latent_mask', self.default_latent_mask)
         self.style_degree = input_item.get('style_degree', self.default_style_degree)
+        self.style_index = input_item.get('style_index', self.default_style_index)
         self.skip_vtoonify = input_item.get('skip_vtoonify', self.default_skip_vtoonify)
 
         print(f"Handling image with parametters:")
@@ -197,6 +199,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         print(f"\tscale_image: {self.scale_image}")
         print(f"\tlatent_mask: {self.latent_mask}")
         print(f"\tstyle_degree: {self.style_degree}")
+        print(f"\tstyle_index: {self.style_index}")
         print(f"\tskip_vtoonify: {self.skip_vtoonify}")
 
         image_array = np.frombuffer(image_bytes, np.uint8)
@@ -211,7 +214,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
             # Stylize pSp image
             print('Stylizing image with pSp')
-            s_w = self.applyExstyle(s_w, self.exstyle, self.latent_mask)
+            s_w = self.applyExstyle(s_w, self.exstyles[self.style_index], self.latent_mask)
 
             self.embeddings_buffer.append(torch.squeeze(s_w))
             self.window_slide()
@@ -429,6 +432,7 @@ if __name__ == '__main__':
             "latent_mask": args.psp_style,
             "style_degree": args.style_degree,
             "skip_vtoonify": args.skip_vtoonify,
+            "style_index": args.style_id,
             }},
         ], context)
 
