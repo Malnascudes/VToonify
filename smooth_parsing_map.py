@@ -11,8 +11,12 @@ from torchvision import transforms
 import torch.nn.functional as F
 from model.raft.core.raft import RAFT
 from model.raft.core.utils.utils import InputPadder
-from model.bisenet.model import BiSeNet
-from model.stylegan.model import Downsample
+if 'USING_TORCHSERVE' in os.environ:
+    from model.bisenet.bisnet_model import BiSeNet
+    from model.stylegan.stylegan_model import Downsample
+else:
+    from model.bisenet.bisnet_model import BiSeNet
+    from model.stylegan.stylegan_model import Downsample
 
 class Options():
     def __init__(self):

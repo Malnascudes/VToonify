@@ -10,7 +10,7 @@ from torchvision import transforms
 import torch.nn.functional as F
 from tqdm import tqdm
 from model.vtoonify import VToonify
-from model.bisenet.model import BiSeNet
+from model.bisenet.bisnet_model import BiSeNet
 from model.encoder.align_all_parallel import align_face
 from util import save_image, load_image, visualize, load_psp_standalone, get_video_crop_parameter, tensor2cv2
 

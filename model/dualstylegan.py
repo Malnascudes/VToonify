@@ -1,7 +1,11 @@
 import random
 import torch
 from torch import nn
-from model.stylegan.model import ConvLayer, PixelNorm, EqualLinear, Generator
+import os
+if 'USING_TORCHSERVE' in os.environ:
+    from stylegan_model import ConvLayer, PixelNorm, EqualLinear, Generator
+else:
+    from model.stylegan.stylegan_model import ConvLayer, PixelNorm, EqualLinear, Generator
 
 class AdaptiveInstanceNorm(nn.Module):
     def __init__(self, fin, style_dim=512):

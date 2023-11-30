@@ -1,0 +1,22 @@
+version: '3'
+services:
+ elface-torchserve:
+   build:
+     context: .
+     dockerfile: Dockerfile
+   runtime: nvidia
+   shm_size: '14g'
+   ports:
+     - '127.0.0.1:8080:8080'
+     - '127.0.0.1:8081:8081'
+     - '127.0.0.1:8082:8082'
+     - '127.0.0.1:7070:7070'
+     - '127.0.0.1:7071:7071'
+   volumes:
+     - ./model_store:/home/model-server/model_files/model_store
+     - ./config.properties:/home/model-server/model_files/config.properties
+   ulimits:
+     memlock:
+       soft: -1
+       hard: -1
+   command: torchserve --start --model-store=/home/model-server/model_files/model_store --models vToonify=vToonify.mar --ts-config /home/model-server/model_files/config.properties

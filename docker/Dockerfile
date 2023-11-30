@@ -1,0 +1,22 @@
+# This is current latest torchserve image, set specific version just in case of futre releases
+FROM pytorch/torchserve:0.9.0-gpu 
+
+# Switch to root to install nvcc
+USER root
+
+# Install nvcc needed to compile custom VToonify cuda libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cuda-nvcc-12-1 \
+    libcusparse-dev-12-1 \
+    libcublas-dev-12-1 \
+    libcusolver-dev-12-1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Go back to original user to dont run as root
+USER model-server
+# maybe necessary to access nvcc
+# RUN usermod -a -G video model-server
+
+# Install python dependencies
+ADD requirements.txt requirements.txt
+RUN pip install -r requirements.txt

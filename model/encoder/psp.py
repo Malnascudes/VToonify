@@ -8,7 +8,11 @@ import math
 import torch
 from torch import nn
 from model.encoder.encoders import psp_encoders
-from model.stylegan.model import Generator
+import os
+if 'USING_TORCHSERVE' in os.environ:
+	from stylegan_model import Generator
+else:
+	from model.stylegan.stylegan_model import Generator
 
 def get_keys(d, name):
 	if 'state_dict' in d:
