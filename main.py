@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 
 import cv2
-from remove_background import remove_background
 import torch
 import dlib
 import numpy as np
@@ -20,6 +19,7 @@ else:
     from model.bisenet.bisnet_model import BiSeNet
     from model.encoder.align_all_parallel import align_face
     from model.vtoonify import VToonify
+from remove_background import remove_background
 from torchvision import transforms
 from util import get_video_crop_parameter
 from util import load_psp_standalone
