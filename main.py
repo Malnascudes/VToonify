@@ -41,7 +41,7 @@ def setup_parser():
     parser.add_argument('--scale_image', action='store_true', help='resize and crop the image to best fit the model')
     parser.add_argument('--style_encoder_path', type=str, default='./checkpoint/encoder.pt', help='path of the style encoder')
     parser.add_argument('--exstyle_path', type=str, default=None, help='path of the extrinsic style code')
-    parser.add_argument('--style_image_path', type=str, default=None, help='path of the style image used instead of the exstyle path and style_id')
+    parser.add_argument('--style_image_folder', type=str, default=None, help='path of the style image used instead of the exstyle path and style_id')
     parser.add_argument('--faceparsing_path', type=str, default='./checkpoint/faceparsing.pth', help='path of the face parsing model')
     parser.add_argument('--cpu', action='store_true', help='if true, only use cpu')
     parser.add_argument('--backbone', type=str, default='dualstylegan', help='dualstylegan | toonify')
@@ -113,6 +113,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             face_landmark_modelname = 'shape_predictor_68_face_landmarks.dat'
             style_encoder_path = "encoder.pt" # pSp encoder url https://drive.google.com/file/d/1bMTNWkh5LArlaWSc_wa8VKyq2V42T2z0/view
             exstyle_path = "exstyle_code.npy"
+            self.exstyle_images = ['Peter_Mohrbacher-0048.jpeg', 'Peter_Mohrbacher-0054.jpeg']
         else:
             self.backbone = self.manifest['models']['backbone']
             vtoonify_path = self.manifest['models']['vtoonify']
@@ -120,6 +121,8 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
             face_landmark_modelname = './checkpoint/shape_predictor_68_face_landmarks.dat'
             style_encoder_path = self.manifest['models']['style_encoder']
             exstyle_path = self.manifest['models']['exstyle']
+            exstyle_image_folder = self.manifest['models']['style_image_folder']
+            self.exstyle_images = [f'{exstyle_image_folder}/{image_name}' for image_name in os.listdir(exstyle_image_folder)]
 
         self.sliding_window_size = self.default_sliding_window_size
         self.FPS = self.default_FPS
@@ -153,19 +156,23 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
 
         # Load External Styles
         if self.backbone == 'dualstylegan':
-            exstyle_image_path = self.manifest['models']['style_image_path']
-            if exstyle_image_path:
-                print(f'Loading Style image from {exstyle_image_path}')
-                exstyle_image = cv2.imread(exstyle_image_path)
-                with torch.no_grad():
-                    exstyle_image = self.pre_processingImage(exstyle_image, False, [200,200,200,200])
-                    self.exstyle = self.encode_face_img(exstyle_image).to(self.device)
+            if self.exstyle_images:
+                self.exstyles = []
+                for exstyle_image_path in self.exstyle_images:
+                    print(f'Loading Style image from {exstyle_image_path}')
+                    exstyle_image = cv2.imread(exstyle_image_path)
+                    with torch.no_grad():
+                        exstyle_image = self.pre_processingImage(exstyle_image)
+                        self.exstyle = self.encode_face_img(exstyle_image).to(self.device)
+                    self.exstyles.append(self.exstyle)
+                self.exstyle = self.exstyles[0]
             else:
                 self.exstyles = np.load(self.manifest['models']['exstyle'], allow_pickle='TRUE').item()
-                stylename = list(self.exstyles.keys())[self.manifest['models']['style_id']]
-                self.exstyle = torch.tensor(self.exstyles[stylename]).to(self.device)
-                with torch.no_grad():
-                    self.exstyle = self.vtoonify.zplus2wplus(self.exstyle)  
+                # stylename = list(self.exstyles.keys())[self.manifest['models']['style_id']]
+                # self.exstyle = torch.tensor(self.exstyles[stylename]).to(self.device)
+                # with torch.no_grad():
+                #     self.exstyle = self.vtoonify.zplus2wplus(self.exstyle)  
+                # self.exstyles = [self.exstyle]
 
 
         self.initialized = True
@@ -393,7 +400,7 @@ if __name__ == '__main__':
             'backbone': args.backbone,
             'exstyle': args.exstyle_path,
             'style_id': args.style_id,
-            'style_image_path': args.style_image_path,
+            'style_image_folder': args.style_image_folder,
         }
     }
     context = Context(model_dir=model_dir, model_name="vtoonify", manifest=manifest,batch_size=1,gpu=0,mms_version="1.0.0")
