@@ -258,7 +258,7 @@ class VToonifyHandler(BaseHandler): # for TorchServe  it need to inherit from Ba
         frame = align_face(frame, self.landmarkpredictor)
         frame = self.transform(frame).unsqueeze(dim=0).to(self.device)
         if self.set_background:
-            frame = remove_background(frame, white_background=self.set_background=="WHITE")
+            frame = remove_background(frame, white_background=self.set_background=="WHITE").to(self.device)
 
         return frame
 
