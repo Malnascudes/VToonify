@@ -34,6 +34,7 @@ def get_person_mask(image):
     mask = remove(
         data=image,
         only_mask=True,
+        session=session,
     )
 
     for _ in range(0):
